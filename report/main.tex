@@ -112,10 +112,10 @@ The time derivative of the KL divergence is not a true gradient nonetheless we s
 Combining the two the derivate of the KL divergence, expressed in terms of the kernel of the RKHS, is:
 \begin{align}
     \label{eq:F_approximation}
-    -& \frac{1}{n}\sum_{x_i,x_j}^n \left[ k(x_i,x_j) (\nabla V(x_i))^\top \nabla V(x_i) \right] \\ 
-    -& 2 \frac{1}{n}\sum_{x_i,x_j}^n \left[ (\nabla_x k(x_i,x_j) )^\top \nabla V(x_j) \right] \\ 
-    +& \frac{1}{n}\sum_{x_i,x_j}^n \left[ \sum_i \frac{ \partial^2 }{ \partial x_i \partial y_i } 
-        k(x_i,x_j) \right]
+    -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla_{x_i} V(x_i)^\top \nabla_{x_i} V(x_i)  \\ 
+    -& 2 \frac{1}{n}\sum_{x_i,x_j}^n  \nabla_{x_i} k(x_i,x_j)^\top \nabla_{x_i} V(x_j)  \\ 
+    +& \frac{1}{n}\sum_{x_i,x_j}^n \left( \sum_k \frac{ \partial^2 }{ \partial (x_i)_k \partial (x_j)_k } 
+        k(x_i,x_j) \right)
 \end{align}
 
 \section{Appendix}
@@ -179,17 +179,20 @@ be further simplified to
 Inserting $p(x) = \frac{e^{-V(x)}}{Z}$ we get
 \begin{align}
     \frac{d}{dt} \text{KL}( q^t \| p ) =
-    -& \mathbb{E}_{x,y\sim q} \left[ k(x,y) (\nabla_y V(x))^\top \nabla_x V(x) \right] \\ 
-    +& 2 \mathbb{E}_{x,y\sim q} \left[ (\nabla_x k(x,y) )^\top \nabla_y V(y) \right] \\ 
+    -& \mathbb{E}_{x,y\sim q} \left[ k(x,y) \nabla_y V(x)^\top \nabla_x V(x) \right] \\ 
+    +& 2 \mathbb{E}_{x,y\sim q} \left[ \nabla_x k(x,y)^\top \nabla_y V(y) \right] \\ 
     +& \mathbb{E}_{x,y\sim q} \left[ \sum_i \frac{ \partial^2 }{ \partial x_i \partial y_i } k(x,y) \right]
     .
 \end{align}
 Approximating $q$ with the empirical distribution
+(Note that in this step the meaning of the indices changed. Before $x_i$ indicated the $i^{th}$
+coordinate of the vector $x$, below $x_i$ denotes the $i^{th}$ particle and $(x_i)_k$ denotes
+its $k^{th}$ coordinate.
 \begin{align}
-    -& \frac{1}{n}\sum_{x_i,x_j}^n \left[ k(x_i,x_j) (\nabla V(x_i))^\top \nabla V(x_i) \right] \\ 
-    -& 2 \frac{1}{n}\sum_{x_i,x_j}^n \left[ (\nabla_x k(x_i,x_j) )^\top \nabla V(x_j) \right] \\ 
-    +& \frac{1}{n}\sum_{x_i,x_j}^n \left[ \sum_i \frac{ \partial^2 }{ \partial x_i \partial y_i } 
-        k(x_i,x_j) \right]
+    -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla_{x_i} V(x_i)^\top \nabla_{x_i} V(x_i)  \\ 
+    -& 2 \frac{1}{n}\sum_{x_i,x_j}^n  \nabla_{x_i} k(x_i,x_j)^\top \nabla_{x_i} V(x_j)  \\ 
+    +& \frac{1}{n}\sum_{x_i,x_j}^n \left( \sum_k \frac{ \partial^2 }{ \partial (x_i)_k \partial (x_j)_k } 
+        k(x_i,x_j) \right)
 \end{align}
 
 The SVGD update written in terms of $V(x)$ is $x_i^{l+1} = x_i^l + \epsilon_l \phi(x_n^l)$
