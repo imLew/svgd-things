@@ -67,7 +67,7 @@ where $k(x,y)$ is the reproducing kernel.
 The central theorem of SVGD is
 \begin{equation}
     \label{eq:svgd}
-    \frac{d}{dt}\ KL( q^t \| p ) = - \E \left[ \tr \left( \A_q \phi(x) \right) \right]
+    \frac{d}{dt}\ KL( q^t \| p ) = - \E_{q(x)} \left[ \tr \left( \A_p \phi(x) \right) \right]
 \end{equation}
 All the above is from \cite{svgd}
 
