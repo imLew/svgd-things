@@ -1,11 +1,4 @@
 \newcommand{\bvec}[1]{\boldsymbol{#1}}
-\newcommand{\tr}{\textrm{trace}}
-\newcommand{\KL}{\textrm{KL}}
-\newcommand{\A}{\mathcal{A}}
-\newcommand{\F}{\mathcal{F}}
-\newcommand{\E}{\mathbb{E}}
-\newcommand{\D}{\mathbb{D}}
-\newcommand{\R}{\mathbb{R}}
 \newcommand\blfootnote[1]{%
   \begingroup
   \renewcommand\thefootnote{}\footnote{#1}%
@@ -44,30 +37,32 @@
 The Stein operator is defined as
 \begin{equation}
     \label{eq:stein_operator}
-    \A_p \phi(x) = \phi(x) \nabla \log p(x) + \nabla \phi(x)
+    \mathcal{A}_p \phi(x) = \phi(x) \nabla \log p(x) + \nabla \phi(x)
 \end{equation}
 Stein discrepancy is defined by
+
 \begin{equation}
     \label{eq:stein_discrepancy}
-    \D( q, p ) = \max_{ \phi \in \mathcal{H} } 
+    \mathbb{D}( q, p ) = \max_{ \phi \in \mathcal{H} } 
     \left\{ 
-        \E_{ x \sim q } 
+      \mathbb{E}_{ x \sim q } 
         \left[ 
-            \tr ( A_p \phi(x) ) 
+            \text{trace} ( A_p \phi(x) ) 
         \right]^2
         \ | \ ||\phi|| \leq 1 
     \right\}
 \end{equation}
+
 The maximising $\phi$ for the Stein discrepancy can found analytically if $\mathcal{H}$ is a RKHS. It is given by
 \begin{equation}
     \label{eq:phi_max}
-    \phi_{ q, p } (x) = \E_{ y \sim q } \left[ \A_p k(x, y) \right]
+    \phi_{ q, p } (x) = \mathbb{E}_{ y \sim q } \left[ \mathcal{A}_p k(x, y) \right]
 \end{equation}
 where $k(x,y)$ is the reproducing kernel.
 The central theorem of SVGD is
 \begin{equation}
     \label{eq:svgd}
-    \frac{d}{dt}\ KL( q^t \| p ) = - \E \left[ \tr \left( \A_q \phi(x) \right) \right]
+    \frac{d}{dt}\ KL( q^t \| p ) = - \mathbb{E} \left[ \text{trace} \left( \mathcal{A}_q \phi(x) \right) \right]
 \end{equation}
 All the above is from \cite{svgd}
 
@@ -83,16 +78,16 @@ Assuming that this converges in the sense that the final distribution $q^{\infty
 $p(x)$ we can write
 \begin{align}
 \label{eq:therm_int}
-0 &= \KL( q^{\infty} \| p ) \\
-&= \KL( q^0 \| p ) - \int_0^{\infty} \frac{d}{dt} \KL( q^t \| p ) dt \\
-&= \KL( q^0 \| p ) + \int_0^{\infty} \nabla F_t dt
+0 &= \text{KL}( q^{\infty} \| p ) \\
+&= \text{KL} ( q^0 \| p ) - \int_0^{\infty} \frac{d}{dt} \text{KL} ( q^t \| p ) dt \\
+&= \text{KL}( q^0 \| p ) + \int_0^{\infty} \nabla F_t dt
 \end{align}
 
 The second ingredient to finding $\log Z$ from this is the assumption that $p(x) = \frac{ e^{-V(x)} }{ Z }$, 
 where $Z = \int e^{-V(x, y)} dx$ is the evidence. In this case we can write
 \begin{align}
 \label{eq:gibbs_kl}
-    \KL( q^t \| p ) &= \int_X q^t(x) \log \frac{ q^t(x) }{ p(x) } dx \\
+    \text{KL}( q^t \| p ) &= \int_X q^t(x) \log \frac{ q^t(x) }{ p(x) } dx \\
                     &= \int_X q^t(x) \log q^t(x) - q^t(x) \log \frac{ e^{-V(x, y)} }{ Z } dx \\
                     &= \int_X q^t(x) \log q^t(x) dx + \int_X q^t(x) V(x, y) dx + \log Z \int_X q^t(x) dx \\
                     &= \int_X q^t(x) \log q^t(x) dx + \int_X q^t(x) V(x, y) dx + \log Z
@@ -115,37 +110,86 @@ This gives us $\log Z$ as :
 The time derivative of the KL divergence is not a true gradient nonetheless we should be able to use
 (\ref{eq:svgd}) in combination with (\ref{eq:phi_max}) to approximate the second term in (\ref{eq:log_z}).
 Combining the two the derivate of the KL divergence, expressed in terms of the kernel of the RKHS, is:
-
+\begin{align}
+    \label{eq:F_approximation}
+    -& \frac{1}{n}\sum_{x_i,x_j}^n \left[ k(x_i,x_j) (\nabla V(x_i))^\top \nabla V(x_i) \right] \\ 
+    -& 2 \frac{1}{n}\sum_{x_i,x_j}^n \left[ (\nabla_x k(x_i,x_j) )^\top \nabla V(x_j) \right] \\ 
+    +& \frac{1}{n}\sum_{x_i,x_j}^n \left[ \sum_i \frac{ \partial^2 }{ \partial x_i \partial y_i } 
+        k(x_i,x_j) \right]
+\end{align}
 
 \section{Appendix}
-Derivation of gradient estimation
+\subsection{A: Derivation of gradient estimation}
+This appendix contains the calculation to get from the derivative of the KL-divergence in (\ref{eq:svgd})
+to the update for the algorithm in (\ref{eq:F_approximation}).
+Starting with the original theorem and expanding the Stein operator we get
 \begin{align}
-    \frac{d}{dt} \KL( q^t \| p ) = - \E_{x\sim q} \E_{y \sim q} \big[
+    \frac{d}{dt}\ KL( q^t \| p ) &= - \mathbb{E}_{x \sim q} \left[ \text{trace} \left( \mathcal{A}_q \phi(x) \right) \right] \\
+         &=  - \mathbb{E}_{x \sim q} \left[ 
+             \text{trace} \left( \phi(x) \nabla_x \log p(x)^\top  + \nabla_x \phi(x) \right)
+         \right]\
+\end{align}
+
+Substituting (\ref{eq:phi_max}) for $\phi$ and the second Stein operator
+
+\begin{gather}
+         =  - \mathbb{E}_{x \sim q} \left[ 
+                 \text{trace} \left( \mathbb{E}_{y \sim q} \left[ \mathcal{A}_p k(y,x) \right] \nabla_x \log p(x)^\top
+                        + \nabla_x \mathbb{E}_{y \sim q } \left[ \mathcal{A}_p k(y, x) \right] \right) 
+                \right] \\
+        =  - \mathbb{E}_{x \sim q} \Big[ 
+                     \text{trace}  \Big(
+                      \mathbb{E}_{y\sim q} \left[ k(y,x) \nabla_y \log p(y)^\top 
+                     + \nabla_y k(y,x) \right] \nabla_x \log p(x)^\top \\
+               + \nabla_x \mathbb{E}_{x_j \sim q } \left[ 
+                          k(y,x) \nabla_y \log p(x)^\top 
+                          + \nabla_y k(y,x)
+                      \right] 
+              \Big) \Big] \\
+        = - \mathbb{E}_{x \sim q} \Big[ 
+             \text{trace} \Big( \mathbb{E}_{y \sim q} [ k(y,x) \nabla_y \log p(t)^\top \nabla_x \log p(x)^\top \Big) \\
+             + \text{trace} \Big( \mathbb{E}_{y \sim q} [ \nabla_y  k(y,x) ] \nabla_x \log p(x)^\top \Big) \\
+             + \text{trace} \Big( \nabla_x \mathbb{E}_{y \sim q} [ k(y,x) \nabla_y  \log p(y)^\top ] \Big) \\
+             + \text{trace} \Big( \nabla_x \mathbb{E}_{y \sim q} [ \nabla_y  k(y,x)] \Big)
+             \Big] \\
+         = - \mathbb{E}_{x \sim q} \mathbb{E}_{y \sim q} \Big[
+             \text{trace} \Big( k(x,y) \nabla_y \log p(y) \nabla_x \log p(x)^\top \Big) \\
+             + \text{trace} \Big( \nabla_y  k(y,x) \nabla_x \log p(x)^\top \Big) \\
+             + \text{trace} \Big( \nabla_x k(y,x) \nabla_y  \log p(y)^\top \Big) \\
+             + \text{trace} \Big( \nabla_x \nabla_y  k(y,x) \Big) 
+\end{gather}
+
+The trace of an outer product is simply the inner product of the same vectors so the above can 
+be further simplified to
+
+\begin{align}
+    \frac{d}{dt} \text{KL}( q^t \| p ) = - \mathbb{E}_{x\sim q} \mathbb{E}_{y \sim q} \big[
         & k(x,y) (\nabla_y \log p(y))^\top \nabla_x \log p(x) \\
         &+ (\nabla_y k(x,y) )^\top \nabla_x \log p(x) \\
         &+ (\nabla_x k(x,y) )^\top \nabla_y \log p(y) \\
         &+ \sum_i \frac{ \partial^2 }{ \partial x_i \partial y_i } k(x,y) \big]
 \end{align}
 \begin{align}
-    \frac{d}{dt} \KL( q^t \| p ) =
-    -& \E_{x,y\sim q} \left[ k(x,y) (\nabla_y \log p(y))^\top \nabla_x \log p(x) \right] \\ 
-    +& 2 \E_{x,y\sim q} \left[ (\nabla_x k(x,y) )^\top \nabla_y \log p(y) \right] \\ 
-    +& \E_{x,y\sim q} \left[ \sum_i \frac{ \partial^2 }{ \partial x_i \partial y_i } k(x,y) \right]
+    \frac{d}{dt}    ( q^t \| p ) =
+    -& \mathbb{E}_{x,y\sim q} \left[ k(x,y) (\nabla_y \log p(y))^\top \nabla_x \log p(x) \right] \\ 
+    +& 2 \mathbb{E}_{x,y\sim q} \left[ (\nabla_x k(x,y) )^\top \nabla_y \log p(y) \right] \\ 
+    +& \mathbb{E}_{x,y\sim q} \left[ \sum_i \frac{ \partial^2 }{ \partial x_i \partial y_i } k(x,y) \right]
 \end{align}
 
 Inserting $p(x) = \frac{e^{-V(x)}}{Z}$ we get
 \begin{align}
-    \frac{d}{dt} \KL( q^t \| p ) =
-    -& \E_{x,y\sim q} \left[ k(x,y) (\nabla_y V(x))^\top \nabla_x V(x) \right] \\ 
-    +& 2 \E_{x,y\sim q} \left[ (\nabla_x k(x,y) )^\top \nabla_y V(y) \right] \\ 
-    +& \E_{x,y\sim q} \left[ \sum_i \frac{ \partial^2 }{ \partial x_i \partial y_i } k(x,y) \right]
+    \frac{d}{dt} \text{KL}( q^t \| p ) =
+    -& \mathbb{E}_{x,y\sim q} \left[ k(x,y) (\nabla_y V(x))^\top \nabla_x V(x) \right] \\ 
+    +& 2 \mathbb{E}_{x,y\sim q} \left[ (\nabla_x k(x,y) )^\top \nabla_y V(y) \right] \\ 
+    +& \mathbb{E}_{x,y\sim q} \left[ \sum_i \frac{ \partial^2 }{ \partial x_i \partial y_i } k(x,y) \right]
     .
 \end{align}
 Approximating $q$ with the empirical distribution
 \begin{align}
-    -& \frac{1}{n}\sum_{x_i,x_j} \left[ k(x_i,x_j) (\nabla V(x_i))^\top \nabla V(x_i) \right] \\ 
-    -& 2 \frac{1}{n}\sum_{x_i,x_j} \left[ (\nabla_x k(x_i,x_j) )^\top \nabla V(x_j) \right] \\ 
-    +& \frac{1}{n}\sum_{x_i,x_j} \left[ \sum_i \frac{ \partial^2 }{ \partial x_i \partial y_i } k(x_i,x_j) \right]
+    -& \frac{1}{n}\sum_{x_i,x_j}^n \left[ k(x_i,x_j) (\nabla V(x_i))^\top \nabla V(x_i) \right] \\ 
+    -& 2 \frac{1}{n}\sum_{x_i,x_j}^n \left[ (\nabla_x k(x_i,x_j) )^\top \nabla V(x_j) \right] \\ 
+    +& \frac{1}{n}\sum_{x_i,x_j}^n \left[ \sum_i \frac{ \partial^2 }{ \partial x_i \partial y_i } 
+        k(x_i,x_j) \right]
 \end{align}
 
 The SVGD update written in terms of $V(x)$ is $x_i^{l+1} = x_i^l + \epsilon_l \phi(x_n^l)$
