@@ -1,11 +1,8 @@
 using Statistics
+using KernelFunctions
 using LinearAlgebra
 using Random
-using Plots
 using Zygote
-using ForwardDiff
-using PyPlot
-using Distributions
 using Distances
 
 function rbf(x, y, h)
@@ -38,10 +35,10 @@ function gradp(d::Distribution, x)
     gradient(x->log(pdf(d, x)), reshape(x, length(x)) )[1]
 end
 
-function svgd_step(X, kernel, grad_logp, ϵ, repulsion)
+function svgd_step(X, kernel::Kernel, grad_logp, ϵ, repulsion)
     n = size(X)[end]
-	k_mat = mapslices(x -> kernel.(eachcol(X), [x]), X, dims=1)
-	grad_k = mapslices(x -> grad.(kernel, [x], eachcol(X)), X, dims = 1)
+    k_mat = kernelmatrix(kernel, X)
+    grad_k = kernel_grad_matrix(kernel, X)
     X += (
             ϵ/n * ( 
                 hcat( grad_logp.(eachcol(X))... ) * k_mat 
@@ -62,5 +59,10 @@ function svgd_fit(q, glp ;n_iter=100, repulsion=1, step_size=1)
 end
 
 
+function kernel_gradient(kernel::Kernel, x, y)
+    gradient(x->kernel, x, y)
+end
 
-
+function kernel_grad_matrix(kernel::Kernel, X)
+	mapslices(x -> grad.(kernel, [x], eachcol(X)), X, dims = 1)
+end
