@@ -39,12 +39,10 @@ function svgd_step(X, kernel::Kernel, grad_logp, ϵ, repulsion)
     n = size(X)[end]
     k_mat = kernelmatrix(kernel, X)
     grad_k = kernel_grad_matrix(kernel, X)
-    X += (
-            ϵ/n * ( 
-                hcat( grad_logp.(eachcol(X))... ) * k_mat 
+    glp_mat = grad_logp_matrix(grad_logp, X)
+    X += ϵ/n * ( glp_mat * k_mat 
                 + repulsion * hcat( sum(grad_k, dims=2)... ) 
-           )
-         )
+               )
 end
 
 function svgd_fit(q, glp ;n_iter=100, repulsion=1, step_size=1)
@@ -52,12 +50,16 @@ function svgd_fit(q, glp ;n_iter=100, repulsion=1, step_size=1)
     while i < n_iter
         i += 1
         h = median_trick(q)
-        k(x, y) = rbf(x, y, h)
+        #= k(x, y) = rbf(x, y, h) =#
+        k = TransformedKernel( SqExponentialKernel(), ScaleTransform( 1/sqrt(h)))
         q = svgd_step(q, k, glp, step_size, repulsion)
     end
     return q
 end
 
+function grad_logp_matrix(grad_logp, X)
+    hcat( grad_logp.(eachcol(X))... )
+end
 
 function kernel_gradient(kernel::Kernel, x, y)
     gradient(x->kernel, x, y)
