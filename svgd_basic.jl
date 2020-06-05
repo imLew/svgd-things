@@ -5,9 +5,6 @@ using Random
 using Zygote
 using Distances
 
-function rbf(x, y, h)
-    exp(-1/h * sum((x - y).^2))
-end
 
 function pairwise_dist(X)
     dist = []
@@ -28,13 +25,6 @@ end
 
 grad(f,x,y) = gradient(f,x,y)[1]
 
-function gradp(d::Distribution, x)
-    if length(x) == 1
-        x = x[1]
-    end
-    gradient(x->log(pdf(d, x)), reshape(x, length(x)) )[1]
-end
-
 function svgd_step(X, kernel::Kernel, grad_logp, ϵ, repulsion)
     n = size(X)[end]
     k_mat = kernelmatrix(kernel, X)
@@ -50,7 +40,6 @@ function svgd_fit(q, glp ;n_iter=100, repulsion=1, step_size=1)
     while i < n_iter
         i += 1
         h = median_trick(q)
-        #= k(x, y) = rbf(x, y, h) =#
         k = TransformedKernel( SqExponentialKernel(), ScaleTransform( 1/sqrt(h)))
         q = svgd_step(q, k, glp, step_size, repulsion)
     end
