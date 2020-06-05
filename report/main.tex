@@ -126,7 +126,7 @@
 
     \begin{align}
         \frac{d}{dt}\ KL( q^t \| p ) \approx -& \frac{1}{n}\sum_{x_i,x_j}^n  \Bigg[
-            k(x_i,x_j) \Bigg( \nabla_{x_i} V(x_i)^\top \nabla_{x_i} V(x_i)  
+            k(x_i,x_j) \Bigg( \nabla_{x_i} \log p(x_i)^\top \nabla_{x_i} \log p(x_i)  
             + \frac{2}{h}\Big( d - \frac{2}{h} \|x_i - x_j\|^2 \Big) \Bigg)
         \Bigg]
     \end{align} 
