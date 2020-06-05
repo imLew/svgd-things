@@ -43,7 +43,7 @@ begin # util functions
 end
 
 
-begin # 1D Gaussian SVGD using Distributions package
+begin  # 1D Gaussian SVGD using Distributions package
     # general params
     n_particles = 50
     e = 1
@@ -156,57 +156,57 @@ end
 
 
 # bayesian logistic regression
+begin  # regression util functions
+    function generate_samples(n, dist, ratio, n_dim=2)
+        n₁ = ceil(Int, ratio*n)
+        n₂ = ceil(Int, (1-ratio)*n)
+        x₁ = Random.randn(n₁,n_dim)
+        x₂ = Random.randn(n₂,n_dim) .+ dist
+        return [ones(n₁) x₁; zeros(n₂) x₂]
+    end
 
-function generate_samples(n, dist, ratio, n_dim=1)
-    n₁ = ceil(Int, ratio*n)
-    n₂ = ceil(Int, (1-ratio)*n)
-    x₁ = Random.randn(n₁,n_dim)
-    x₂ = Random.randn(n₂,n_dim) .+ dist
-    return [ones(n₁) x₁; zeros(n₂) x₂]
+    sigma(z,w) = 1 / (1 + exp(-1*sum(z'*w)))
+
+    function logistic_grad_logp(data, w)
+        y = data[:,1]
+        x = data[:,2:end]
+        z = [ones(size(x)[1]) x]
+        sum((y .- sigma.(eachrow(z),[w])).*z, dims=1)'
+    end
+
+    function plot_classes(data, truth)
+        # only 2D 
+        x = traindata[:,2]
+        y = traindata[:,3]
+        l = traindata[:,1]
+        t = data[:,1]
+        t.!=y
+        Plots.scatter([x[l.==t], x[l.!=t]], [y[l.==t], y[l.!=t]], label=["correct" "incorrect"])
+    end
+
+    function log_regr(X, w)
+        Z = [ones(size(X)[1]) X]
+        round.(Int, sigma.(eachrow(Z), [w]))
+    end
 end
 
-sigma(z,w) = 1 / (1 + exp(-1*sum(z'*w)))
-
-function logistic_grad_logp(data, w)
-    y = data[:,1]
-    x = data[:,2:end]
-    z = [ones(size(x)[1]) x]
-    sum((y .- sigma.(eachrow(z),[w])).*z, dims=1)'
-end
-
-
-function logistic_regr_svgd(;n_iter=100, dim=2, num_particles=100, h=1, repulsion=0.5, e=0.1)
+begin  # 2D regression example
     n_samples = 100
     dist_samples = 3
     ratio = 0.5
-    data = generate_samples(n_samples, dist_samples, ratio,dim)
-    q = randn(dim+1, num_particles)
+    n_iter = 100
+    step_size = 0.1
+    n_dim = 2
+    data = generate_samples(n_samples, dist_samples, ratio, n_dim)
+
+    q = randn(n_dim+1, n_samples)
     q0 = copy(q)
     glp(w) = logistic_grad_logp(data, w)
-    for i in 1:n_iter
-        h = median_trick(q)
-        k(x, y) = rbf(x, y, h)
-        q = svgd_step(q, k, glp, e, repulsion)
-    end
-    return data, q0, q
+
+    q = svgd_fit(q, glp, n_iter=n_iter, step_size=step_size)
+
+    traindata = copy(data)
+    traindata[:, 1] = log_regr(data[:,2:end], mean(q, dims=2))
+
+    plot_classes(traindata, data[:,1])
 end
-
-function plot_classes(data)
-    a_x = data[data[:,1].==0,2]
-    a_y = data[data[:,1].==0,3]
-    b_x = data[data[:,1].==1,2]
-    b_y = data[data[:,1].==1,3]
-    Plots.scatter([a_x, b_x], [a_y, b_y], markercolor=["blue" "red"], legend=:none)
-end
-
-function log_regr(X, w)
-    Z = [ones(size(X)[1]) X]
-    round.(Int, sigma.(eachrow(Z), [w]))
-end
-
-data, q0, q = logistic_regr_svgd(num_particles=1, n_iter=500)
-
-traindata = data
-traindata[:, 1] = log_regr(data[:,2:3], q)
-
-plot_classes(traindata)
