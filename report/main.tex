@@ -106,17 +106,57 @@ This gives us $\log Z$ as :
 \end{align}
 
 
+\newpage
 \subsection{Estimating the Gradient for SVGD}
 The time derivative of the KL divergence is not a true gradient nonetheless we should be able to use
 (\ref{eq:svgd}) in combination with (\ref{eq:phi_max}) to approximate the second term in (\ref{eq:log_z}).
 Combining the two the derivate of the KL divergence, expressed in terms of the kernel of the RKHS, is:
 \begin{align}
     \label{eq:F_approximation}
-    -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla_{x_i} V(x_i)^\top \nabla_{x_i} V(x_i)  \\ 
-    -& 2 \frac{1}{n}\sum_{x_i,x_j}^n  \nabla_{x_i} k(x_i,x_j)^\top \nabla_{x_i} V(x_j)  \\ 
+    -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla \log p(x_i)^\top \nabla \log p(x_i)  \\ 
+    -& 2 \frac{1}{n}\sum_{x_i,x_j}^n  \nabla_{1} k(x_i,x_j)^\top \nabla \log p(x_i)  \\ 
     +& \frac{1}{n}\sum_{x_i,x_j}^n \left( \sum_k \frac{ \partial^2 }{ \partial (x_i)_k \partial (x_j)_k } 
         k(x_i,x_j) \right)
 \end{align}
+
+In order to simplify the implementation/optimize it we can rewrite this as
+% In order to simplify the implementation we can write this in terms of matrix multiplications,
+% let 
+% $$K_{ij} = k(x_i,x_j) $$
+be the matrix of kernel pairwise evaluations on the particles,
+$$GK(x_i)_{\cdot j} = \nabla_{1} k(x_i,x_j)$$
+% what is a good way to indicate rows of columns of a matrix?
+be the matrix whose columns are the gradients of the kernel (with respect 
+to the first argument) evaluated at $(x_i, x_j)$ (so the columns of $GK(x_i)$ are the gradients with first argument
+held fixed at $x_i$ and second argument $j$=column number, and let 
+$$GLP_{\cdot j} = \nabla \log p(x_j)$$
+the matrix whose
+columns are the gradient of the log probability evaluated at each particle, then
+
+% \begin{align}
+%     \label{eq:F_approx_matrix}
+%     -& \frac{1}{n}  \sum_{x_i}^n \nabla \log p(x_i)^\top K \nabla \log p(x_i)  \\ 
+%     -& 2 \frac{1}{n}\sum_{x_i}^n  GK(x_i) GLP  \\
+%     +& \frac{1}{n}\sum_{x_i,x_j}^n \left( \sum_k \frac{ \partial^2 }{ \partial (x_i)_k \partial (x_j)_k } 
+%         k(x_i,x_j) \right)
+% \end{align}
+
+\begin{align}
+    \label{eq:F_approx_matrix}
+    - \frac{1}{n}  \Bigg( &\sum_{i}^n \| \nabla \log p(x_i) \|^2 \sum_{x_j}^{n}k(x_i,x_j) \\ 
+    -& 2 \sum_{i}^n  GK(x_i) GLP  \\
+    +& \sum_{i}^n \Big( \sum_k \frac{ \partial^2 }{ \partial (x_i)_k \partial (x_i)_k } k(x_i,x_i) \Big) \\ 
+    +& 2\sum_{i<j}^n \Big( \sum_k \frac{ \partial^2 }{ \partial (x_i)_k \partial (x_j)_k } 
+        k(x_i,x_j) \Big)\Bigg)
+\end{align}
+
+\subsection{Experiments}
+Possible targets to try it on:
+\begin{itemize}
+    \item Gaussians
+    \item neural net
+    \item augmented regression (i.e. with polynomial regressors)
+\end{itemize}
 
 \section{Appendix}
 \subsection{A: Derivation of gradient estimation}
@@ -126,7 +166,7 @@ Starting with the original theorem and expanding the Stein operator we get
 \begin{align}
     \frac{d}{dt}\ KL( q^t \| p ) &= - \mathbb{E}_{x \sim q} \left[ \text{trace} \left( \mathcal{A}_q \phi(x) \right) \right] \\
          &=  - \mathbb{E}_{x \sim q} \left[ 
-             \text{trace} \left( \phi(x) \nabla_x \log p(x)^\top  + \nabla_x \phi(x) \right)
+             \text{trace} \left( \phi(x) \nabla \log p(x)^\top  + \nabla_x \phi(x) \right)
          \right]\
 \end{align}
 
@@ -134,28 +174,28 @@ Substituting (\ref{eq:phi_max}) for $\phi$ and the second Stein operator
 
 \begin{gather}
          =  - \mathbb{E}_{x \sim q} \left[ 
-                 \text{trace} \left( \mathbb{E}_{y \sim q} \left[ \mathcal{A}_p k(y,x) \right] \nabla_x \log p(x)^\top
+                 \text{trace} \left( \mathbb{E}_{y \sim q} \left[ \mathcal{A}_p k(y,x) \right] \nabla \log p(x)^\top
                         + \nabla_x \mathbb{E}_{y \sim q } \left[ \mathcal{A}_p k(y, x) \right] \right) 
                 \right] \\
         =  - \mathbb{E}_{x \sim q} \Big[ 
                      \text{trace}  \Big(
-                      \mathbb{E}_{y\sim q} \left[ k(y,x) \nabla_y \log p(y)^\top 
-                     + \nabla_y k(y,x) \right] \nabla_x \log p(x)^\top \\
+                      \mathbb{E}_{y\sim q} \left[ k(y,x) \nabla \log p(y)^\top 
+                      + \nabla_{1} k(y,x) \right] \nabla \log p(x)^\top \\
                + \nabla_x \mathbb{E}_{x_j \sim q } \left[ 
-                          k(y,x) \nabla_y \log p(x)^\top 
-                          + \nabla_y k(y,x)
+                          k(y,x) \nabla \log p(x)^\top 
+                          + \nabla_{1} k(y,x)
                       \right] 
               \Big) \Big] \\
         = - \mathbb{E}_{x \sim q} \Big[ 
-             \text{trace} \Big( \mathbb{E}_{y \sim q} [ k(y,x) \nabla_y \log p(t)^\top \nabla_x \log p(x)^\top \Big) \\
-             + \text{trace} \Big( \mathbb{E}_{y \sim q} [ \nabla_y  k(y,x) ] \nabla_x \log p(x)^\top \Big) \\
-             + \text{trace} \Big( \nabla_x \mathbb{E}_{y \sim q} [ k(y,x) \nabla_y  \log p(y)^\top ] \Big) \\
+             \text{trace} \Big( \mathbb{E}_{y \sim q} [ k(y,x) \nabla \log p(t)^\top \nabla \log p(x)^\top \Big) \\
+             + \text{trace} \Big( \mathbb{E}_{y \sim q} [ \nabla_{1}  k(y,x) ] \nabla \log p(x)^\top \Big) \\
+             + \text{trace} \Big( \nabla_x \mathbb{E}_{y \sim q} [ k(y,x) \nabla  \log p(y)^\top ] \Big) \\
              + \text{trace} \Big( \nabla_x \mathbb{E}_{y \sim q} [ \nabla_y  k(y,x)] \Big)
              \Big] \\
          = - \mathbb{E}_{x \sim q} \mathbb{E}_{y \sim q} \Big[
-             \text{trace} \Big( k(x,y) \nabla_y \log p(y) \nabla_x \log p(x)^\top \Big) \\
-             + \text{trace} \Big( \nabla_y  k(y,x) \nabla_x \log p(x)^\top \Big) \\
-             + \text{trace} \Big( \nabla_x k(y,x) \nabla_y  \log p(y)^\top \Big) \\
+             \text{trace} \Big( k(x,y) \nabla \log p(y) \nabla \log p(x)^\top \Big) \\
+             + \text{trace} \Big( \nabla_y  k(y,x) \nabla \log p(x)^\top \Big) \\
+             + \text{trace} \Big( \nabla_x k(y,x) \nabla  \log p(y)^\top \Big) \\
              + \text{trace} \Big( \nabla_x \nabla_y  k(y,x) \Big) 
 \end{gather}
 
@@ -171,8 +211,8 @@ be further simplified to
 \end{align}
 \begin{align}
     \frac{d}{dt}    ( q^t \| p ) =
-    -& \mathbb{E}_{x,y\sim q} \left[ k(x,y) (\nabla_y \log p(y))^\top \nabla_x \log p(x) \right] \\ 
-    +& 2 \mathbb{E}_{x,y\sim q} \left[ (\nabla_x k(x,y) )^\top \nabla_y \log p(y) \right] \\ 
+    -& \mathbb{E}_{x,y\sim q} \left[ k(x,y) (\nabla_y \log p(y))^\top \nabla \log p(x) \right] \\ 
+    +& 2 \mathbb{E}_{x,y\sim q} \left[ (\nabla_x k(x,y) )^\top \nabla \log p(y) \right] \\ 
     +& \mathbb{E}_{x,y\sim q} \left[ \sum_i \frac{ \partial^2 }{ \partial x_i \partial y_i } k(x,y) \right]
 \end{align}
 
