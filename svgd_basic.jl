@@ -1,16 +1,10 @@
 using Statistics
+using KernelFunctions
 using LinearAlgebra
 using Random
-using Plots
 using Zygote
-using ForwardDiff
-using PyPlot
-using Distributions
 using Distances
 
-function rbf(x, y, h)
-    exp(-1/h * sum((x - y).^2))
-end
 
 function pairwise_dist(X)
     dist = []
@@ -31,23 +25,14 @@ end
 
 grad(f,x,y) = gradient(f,x,y)[1]
 
-function gradp(d::Distribution, x)
-    if length(x) == 1
-        x = x[1]
-    end
-    gradient(x->log(pdf(d, x)), reshape(x, length(x)) )[1]
-end
-
-function svgd_step(X, kernel, grad_logp, ϵ, repulsion)
+function svgd_step(X, kernel::Kernel, grad_logp, ϵ, repulsion)
     n = size(X)[end]
-	k_mat = mapslices(x -> kernel.(eachcol(X), [x]), X, dims=1)
-	grad_k = mapslices(x -> grad.(kernel, [x], eachcol(X)), X, dims = 1)
-    X += (
-            ϵ/n * ( 
-                hcat( grad_logp.(eachcol(X))... ) * k_mat 
+    k_mat = kernelmatrix(kernel, X)
+    grad_k = kernel_grad_matrix(kernel, X)
+    glp_mat = grad_logp_matrix(grad_logp, X)
+    X += ϵ/n * ( glp_mat * k_mat 
                 + repulsion * hcat( sum(grad_k, dims=2)... ) 
-           )
-         )
+               )
 end
 
 function svgd_fit(q, glp ;n_iter=100, repulsion=1, step_size=1)
@@ -55,12 +40,20 @@ function svgd_fit(q, glp ;n_iter=100, repulsion=1, step_size=1)
     while i < n_iter
         i += 1
         h = median_trick(q)
-        k(x, y) = rbf(x, y, h)
+        k = TransformedKernel( SqExponentialKernel(), ScaleTransform( 1/sqrt(h)))
         q = svgd_step(q, k, glp, step_size, repulsion)
     end
     return q
 end
 
+function grad_logp_matrix(grad_logp, X)
+    hcat( grad_logp.(eachcol(X))... )
+end
 
+function kernel_gradient(kernel::Kernel, x, y)
+    gradient(x->kernel, x, y)
+end
 
-
+function kernel_grad_matrix(kernel::Kernel, X)
+	mapslices(x -> grad.(kernel, [x], eachcol(X)), X, dims = 1)
+end
