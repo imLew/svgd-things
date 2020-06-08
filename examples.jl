@@ -116,13 +116,14 @@ begin  # 2d gaussian mixture
     tglp(x) = gradp(target, x)
 
     # initial
-    μ = [-1, -2]
+    μ = [0, 0]
     sig = [1. 0.; 0. 1.]  # MvNormal can deal with Int type means but not covariances
     initial = MvNormal(μ, sig)
     q_0 = rand(initial, n_particles)
     q = copy(q_0)
 
-    @time q = svgd_fit(q, tglp, n_iter=400, repulsion=r, step_size=e)	
+    @time q, int_dKL = svgd_fit_with_int(q, tglp, n_iter=400, repulsion=r, step_size=e)	
+    #= @time q = svgd_fit(q, tglp, n_iter=400, repulsion=r, step_size=e) =#	
 
     plot_svgd_results(q_0, q, p)
 end
@@ -182,6 +183,7 @@ begin  # regression util functions
         t = data[:,1]
         t.!=y
         Plots.scatter([x[l.==t], x[l.!=t]], [y[l.==t], y[l.!=t]], label=["correct" "incorrect"])
+        #TODO: color by average of prediction
     end
 
     function log_regr(X, w)
