@@ -13,18 +13,19 @@ end
 
 grad(f,x,y) = gradient(f,x,y)[1]
 
-
 function svgd_fit_with_int(q, glp ;n_iter=100, repulsion=1, step_size=1)
     i = 0
     int_dKL = 0
+    dKL_steps = []
     k = TransformedKernel( SqExponentialKernel(), ScaleTransform( 1/sqrt(h)))
     while i < n_iter
         i += 1
         k.transform.s .= median_trick(q)
         q, dKL = svgd_step_with_int(q, k, glp, step_size, repulsion)
-        int_dKL += dKL
+        int_dKL += step_size*dKL
+        push!(dKL_steps, dKL)
     end
-    return q, int_dKL
+    return q, int_dKL, dKL_steps
 end
 
 function svgd_step_with_int(X, kernel::Kernel, grad_logp, ϵ, repulsion)
