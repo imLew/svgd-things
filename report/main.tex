@@ -84,13 +84,13 @@
     \end{align}
 
     The second ingredient to finding $\log Z$ from this is the assumption that $p(x) = \frac{ e^{-V(x)} }{ Z }$, 
-    where $Z = \int e^{-V(x, y)} dx$ is the evidence. In this case we can write
+    where $Z = \int e^{-V(x)} dx$ is the evidence. In this case we can write
     \begin{align}
     \label{eq:gibbs_kl}
         \text{KL}( q^t \| p ) &= \int_X q^t(x) \log \frac{ q^t(x) }{ p(x) } dx \\
-                        &= \int_X q^t(x) \log q^t(x) - q^t(x) \log \frac{ e^{-V(x, y)} }{ Z } dx \\
-                        &= \int_X q^t(x) \log q^t(x) dx + \int_X q^t(x) V(x, y) dx + \log Z \int_X q^t(x) dx \\
-                        &= \int_X q^t(x) \log q^t(x) dx + \int_X q^t(x) V(x, y) dx + \log Z
+                        &= \int_X q^t(x) \log q^t(x) - q^t(x) \log \frac{ e^{-V(x)} }{ Z } dx \\
+                        &= \int_X q^t(x) \log q^t(x) dx + \int_X q^t(x) V(x) dx + \log Z \int_X q^t(x) dx \\
+                        &= \int_X q^t(x) \log q^t(x) dx + \int_X q^t(x) V(x) dx + \log Z
     \end{align}
 
     Now the first term in (\ref{eq:therm_int}) is (\ref{eq:gibbs_kl}) at $t=0$ and the integrand in the second term is
@@ -101,7 +101,7 @@
     This gives us $\log Z$ as :
     \begin{align}
     \label{eq:log_z}
-        \log Z = - \int_X q^t(x) [\log q^t(x) dx +  V(x, y)] dx 
+        \log Z = - \int_X q^t(x) [\log q^t(x) dx +  V(x)] dx 
             - \int_0^\infty \nabla F_t dt
     \end{align}
 
@@ -115,18 +115,18 @@
     Combining the two the derivate of the KL divergence, expressed in terms of the kernel of the RKHS, is:
     \begin{align}
         \label{eq:F_approximation}
-        \frac{d}{dt}\ KL( q^t \| p ) = -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla_{x_i} \log p(x_i)^\top \nabla_{x_i} \log p(x_i)  \\ 
+        \frac{d}{dt}\ KL( q^t \| p ) = -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla_{x_i} \log p(x_i)^\top \nabla_{x_j} \log p(x_j)  \\ 
         -& \frac{1}{n}\sum_{x_i,x_j}^n  \nabla_{x_i} k(x_i,x_j)^\top \nabla_{x_j} \log p(x_j)  \\ 
         -& \frac{1}{n}\sum_{x_i,x_j}^n  \nabla_{x_j} k(x_i,x_j)^\top \nabla_{x_i} \log p(x_i)  \\ 
         -& \frac{1}{n}\sum_{x_i,x_j}^n \left( \sum_k \frac{ \partial^2 }{ \partial (x_i)_k \partial (x_j)_k } 
             k(x_i,x_j) \right)
     \end{align}
 
-    When using an RBF kernel we can use the additional simplifications reducing the approximation to
+    When using an RBF kernel we can use the additional simplifications (see Appendix) reducing the approximation to
 
     \begin{align}
         \frac{d}{dt}\ KL( q^t \| p ) \approx -& \frac{1}{n}\sum_{x_i,x_j}^n  \Bigg[
-            k(x_i,x_j) \Bigg( \nabla_{x_i} \log p(x_i)^\top \nabla_{x_i} \log p(x_i)  
+            k(x_i,x_j) \Bigg( \nabla_{x_i} \log p(x_i)^\top \nabla_{x_j} \log p(x_j)  
             + \frac{2}{h}\Big( d - \frac{2}{h} \|x_i - x_j\|^2 \Big) \Bigg)
         \Bigg]
     \end{align} 
@@ -242,7 +242,7 @@
     where $d$ is the dimensionality of $x$
     reducing the derivative to
     \begin{align}
-        \frac{d}{dt}\ KL( q^t \| p ) =\mathbb{E}_{x,y\sim q} \Bigg[ -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla_{x_i} \log p(x_i)^\top \nabla_{x_i} \log p(x_i)  \\ 
+        \frac{d}{dt}\ KL( q^t \| p ) =\mathbb{E}_{x,y\sim q} \Bigg[ -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla_{x_i} \log p(x_i)^\top \nabla_{x_j} \log p(x_j)  \\ 
         -& \frac{2k(x,y)}{h}\Big( d - \frac{2}{h}\|x-y\|^2 \Big)\Bigg].
     \end{align}
 
@@ -252,7 +252,7 @@
     its $k^{th}$ coordinate.
     For arbitrary kernels we get
     \begin{align}
-        \frac{d}{dt}\ KL( q^t \| p ) \approx -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla_{x_i} V(x_i)^\top \nabla_{x_i} V(x_i)  \\ 
+        \frac{d}{dt}\ KL( q^t \| p ) \approx -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla_{x_i} V(x_i)^\top \nabla_{x_j} V(x_j)  \\ 
         -& \frac{1}{n}\sum_{x_i,x_j}^n  \nabla_{x_i} k(x_i,x_j)^\top \nabla_{x_j} V(x_j)  \\ 
         -& \frac{1}{n}\sum_{x_i,x_j}^n  \nabla_{x_j} k(x_i,x_j)^\top \nabla_{x_i} V(x_i)  \\ 
         -& \frac{1}{n}\sum_{x_i,x_j}^n \left( \sum_k \frac{ \partial^2 }{ \partial (x_i)_k \partial (x_j)_k } 
