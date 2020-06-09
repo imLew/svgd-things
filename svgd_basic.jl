@@ -33,11 +33,16 @@ function svgd_step_with_int(X, kernel::Kernel, grad_logp, ϵ, repulsion)
     k_mat = kernelmatrix(kernel, X)
     grad_k = kernel_grad_matrix(kernel, X)
     glp_mat = grad_logp_matrix(grad_logp, X)
-    X += ϵ/n * ( glp_mat * k_mat 
-                + repulsion * hcat( sum(grad_k, dims=2)... ) 
-               )
-
-    dKL = sum( k_mat * ( glp_mat' * glp_mat + 2*size(X)[1]/h * ones(n,n)
+    #= @info "glp_mat" glp_mat =#
+    @info "n" n
+    if n == 1
+        X += ϵ/n *  glp_mat * k_mat 
+    else
+        X += ϵ/n * ( glp_mat * k_mat 
+                    + repulsion * hcat( sum(grad_k, dims=2)... ) 
+                   )
+    end
+    dKL = n^2\sum( k_mat .* ( glp_mat' * glp_mat + 2*size(X)[1]/h * ones(n,n)
                     - 4/h^2 * Distances.pairwise(SqEuclidean(), X)
                    )
              )
@@ -74,6 +79,9 @@ function kernel_gradient(kernel::Kernel, x, y)
 end
 
 function kernel_grad_matrix(kernel::Kernel, X)
+    if size(X)[end] == 1
+        return 0
+    end
 	mapslices(x -> grad.(kernel, [x], eachcol(X)), X, dims = 1)
 end
 
