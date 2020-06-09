@@ -125,7 +125,7 @@
     When using an RBF kernel we can use the additional simplifications (see Appendix) reducing the approximation to
 
     \begin{align}
-        \frac{d}{dt}\ KL( q^t \| p ) \approx -& \frac{1}{n}\sum_{x_i,x_j}^n  \Bigg[
+        \frac{d}{dt}\ KL( q^t \| p ) \approx -& \frac{1}{n^2}\sum_{x_i,x_j}^n  \Bigg[
             k(x_i,x_j) \Bigg( \nabla_{x_i} \log p(x_i)^\top \nabla_{x_j} \log p(x_j)  
             + \frac{2}{h}\Big( d - \frac{2}{h} \|x_i - x_j\|^2 \Big) \Bigg)
         \Bigg]
@@ -242,8 +242,8 @@
     where $d$ is the dimensionality of $x$
     reducing the derivative to
     \begin{align}
-        \frac{d}{dt}\ KL( q^t \| p ) =\mathbb{E}_{x,y\sim q} \Bigg[ -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla_{x_i} \log p(x_i)^\top \nabla_{x_j} \log p(x_j)  \\ 
-        -& \frac{2k(x,y)}{h}\Big( d - \frac{2}{h}\|x-y\|^2 \Big)\Bigg].
+        \frac{d}{dt}\ KL( q^t \| p ) = - \mathbb{E}_{x,y\sim q} \Bigg[ &k(x,y) \nabla_y \log p(y)^\top \nabla \log p(x) \\ 
+        +& \frac{2k(x,y)}{h}\Big( d - \frac{2}{h}\|x-y\|^2 \Big)\Bigg].
     \end{align}
 
     Approximating $q$ with the empirical distribution
