@@ -7,6 +7,9 @@ using Distances
 
 
 function median_trick(x)
+    if size(x)[end] == 1
+        return 1
+    end
     d = Distances.pairwise(Euclidean(), x)
     Statistics.median(d)^2/log(size(x)[end])
 end
@@ -17,7 +20,7 @@ function svgd_fit_with_int(q, glp ;n_iter=100, repulsion=1, step_size=1)
     i = 0
     int_dKL = 0
     dKL_steps = []
-    k = TransformedKernel( SqExponentialKernel(), ScaleTransform( 1/sqrt(h)))
+    k = TransformedKernel( SqExponentialKernel(), ScaleTransform( 1/sqrt(median_trick(q))))
     while i < n_iter
         i += 1
         k.transform.s .= median_trick(q)
@@ -33,8 +36,6 @@ function svgd_step_with_int(X, kernel::Kernel, grad_logp, ϵ, repulsion)
     k_mat = kernelmatrix(kernel, X)
     grad_k = kernel_grad_matrix(kernel, X)
     glp_mat = grad_logp_matrix(grad_logp, X)
-    #= @info "glp_mat" glp_mat =#
-    @info "n" n
     if n == 1
         X += ϵ/n *  glp_mat * k_mat 
     else
@@ -42,8 +43,8 @@ function svgd_step_with_int(X, kernel::Kernel, grad_logp, ϵ, repulsion)
                     + repulsion * hcat( sum(grad_k, dims=2)... ) 
                    )
     end
-    dKL = n^2\sum( k_mat .* ( glp_mat' * glp_mat + 2*size(X)[1]/h * ones(n,n)
-                    - 4/h^2 * Distances.pairwise(SqEuclidean(), X)
+    dKL = n^2\sum( k_mat .* ( glp_mat' * glp_mat + 2*size(X)[1]/k.transform.s[1] * ones(n,n)
+                    - 4/k.transform.s[1]^2 * Distances.pairwise(SqEuclidean(), X)
                    )
              )
     return X, dKL
@@ -61,7 +62,7 @@ end
 
 function svgd_fit(q, glp ;n_iter=100, repulsion=1, step_size=1)
     i = 0
-    k = TransformedKernel( SqExponentialKernel(), ScaleTransform( 1/sqrt(h)))
+    k = TransformedKernel( SqExponentialKernel(), ScaleTransform( 1/sqrt(median_trick(q))))
     while i < n_iter
         i += 1
         k.transform.s .= median_trick(q)
@@ -85,5 +86,3 @@ function kernel_grad_matrix(kernel::Kernel, X)
 	mapslices(x -> grad.(kernel, [x], eachcol(X)), X, dims = 1)
 end
 
-h = 1
-k = TransformedKernel( SqExponentialKernel(), ScaleTransform( 1/sqrt(h)))

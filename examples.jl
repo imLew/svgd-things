@@ -76,10 +76,10 @@ begin  # 1D Gaussian SVGD using Distributions package
 end
 
 begin  # 2d gaussian
-    n_particles = 50
+    n_particles = 100
     e = 1
     r = 1
-    n_iter = 100
+    n_iter = 1000
 
     # target
     μ = [-2, 8]
@@ -89,22 +89,24 @@ begin  # 2d gaussian
     tglp(x) = gradp(target, x)
 
     # initial
-    μ = [-2, -2]
-    sig = [1. 0.; 0. 1.]  # MvNormal can deal with Int type means but not covariances
+    #= μ = [-2, -2] =#
+    #= sig = [1. 0.; 0. 1.]  # MvNormal can deal with Int type means but not covariances =#
     initial = MvNormal(μ, sig)
     q_0 = rand(initial, n_particles)
     q = copy(q_0)
 
-    @time q = svgd_fit(q, tglp, n_iter=100, repulsion=r, step_size=e)	
+    @time q, int_dKL, dKL = svgd_fit_with_int(q, tglp, n_iter=n_iter, repulsion=r, step_size=e)	
+    #= @time q = svgd_fit(q, tglp, n_iter=400, repulsion=r, step_size=e) =#	
+    Plots.plot(dKL)
 
-    Plots.scatter([q_0[1,:] q[1,:] p[1,:]],[q_0[2,:] q[2,:] p[2,:]], markercolor=["blue" "red" "green"], label=["q_0" "q" "p"], legend = :outerleft)
+    #= plot_svgd_results(q_0, q, p) =#
 end
 
 begin  # 2d gaussian mixture
-    n_particles = 50
+    n_particles = 1
     e = 1
     r = 1
-    n_iter = 100
+    n_iter = 200
 
     # target
     μ₁ = [5, 3]
@@ -122,10 +124,10 @@ begin  # 2d gaussian mixture
     q_0 = rand(initial, n_particles)
     q = copy(q_0)
 
-    @time q, int_dKL = svgd_fit_with_int(q, tglp, n_iter=400, repulsion=r, step_size=e)	
+    @time q, int_dKL, dKL = svgd_fit_with_int(q, tglp, n_iter=n_iter, repulsion=r, step_size=e)	
     #= @time q = svgd_fit(q, tglp, n_iter=400, repulsion=r, step_size=e) =#	
-
-    plot_svgd_results(q_0, q, p)
+    Plots.plot(dKL)
+    #= plot_svgd_results(q_0, q, p) =#
 end
 
 begin  # 3d gaussian
