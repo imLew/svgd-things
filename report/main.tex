@@ -34,212 +34,252 @@
 \maketitle
 
 \section{SVGD}
-The Stein operator is defined as
-\begin{equation}
-    \label{eq:stein_operator}
-    \mathcal{A}_p \phi(x) = \phi(x) \nabla \log p(x) + \nabla \phi(x)
-\end{equation}
-Stein discrepancy is defined by
+    The Stein operator is defined as
+    \begin{equation}
+        \label{eq:stein_operator}
+        \mathcal{A}_p \phi(x) = \phi(x) \nabla \log p(x) + \nabla \phi(x)
+    \end{equation}
+    Stein discrepancy is defined by
 
-\begin{equation}
-    \label{eq:stein_discrepancy}
-    \mathbb{D}( q, p ) = \max_{ \phi \in \mathcal{H} } 
-    \left\{ 
-      \mathbb{E}_{ x \sim q } 
-        \left[ 
-            \text{trace} ( A_p \phi(x) ) 
-        \right]^2
-        \ | \ ||\phi|| \leq 1 
-    \right\}
-\end{equation}
+    \begin{equation}
+        \label{eq:stein_discrepancy}
+        \mathbb{D}( q, p ) = \max_{ \phi \in \mathcal{H} } 
+        \left\{ 
+          \mathbb{E}_{ x \sim q } 
+            \left[ 
+                \text{trace} ( A_p \phi(x) ) 
+            \right]^2
+            \ | \ ||\phi|| \leq 1 
+        \right\}
+    \end{equation}
 
-The maximising $\phi$ for the Stein discrepancy can found analytically if $\mathcal{H}$ is a RKHS. It is given by
-\begin{equation}
-    \label{eq:phi_max}
-    \phi_{ q, p } (x) = \mathbb{E}_{ y \sim q } \left[ \mathcal{A}_p k(x, y) \right]
-\end{equation}
-where $k(x,y)$ is the reproducing kernel.
-The central theorem of SVGD is
-\begin{equation}
-    \label{eq:svgd}
-    \frac{d}{dt}\ KL( q^t \| p ) = - \mathbb{E} \left[ \text{trace} \left( \mathcal{A}_p \phi(x) \right) \right]
-\end{equation}
-All the above is from \cite{svgd}
+    The maximising $\phi$ for the Stein discrepancy can found analytically if $\mathcal{H}$ is a RKHS. It is given by
+    \begin{equation}
+        \label{eq:phi_max}
+        \phi_{ q, p } (x) = \mathbb{E}_{ y \sim q } \left[ \mathcal{A}_p k(x, y) \right]
+    \end{equation}
+    where $k(x,y)$ is the reproducing kernel.
+    The central theorem of SVGD is
+    \begin{equation}
+        \label{eq:svgd}
+        \frac{d}{dt}\ KL( q^t \| p ) = - \mathbb{E} \left[ \text{trace} \left( \mathcal{A}_p \phi(x) \right) \right]
+    \end{equation}
+    All the above is from \cite{svgd}
 
 
 \section{Thermodynamic Integration and SVGD}
-Opper reasoned this should work for SVGD by analogy to the following, which I think is a more standard gradient
-flow transportation. Assume that we have a time derivative of the KL divergence that can be written as a gradient.
-\begin{equation}
-    \frac{d}{dt}\ KL( q^t \| p ) = - \nabla F_t.
-\end{equation}
-Where $q(x)$ is a variational distribution trying to approximate $p(x)$ the true posterior distributions
-Assuming that this converges in the sense that the final distribution $q^{\infty}$ has 0 KL divergence with 
-$p(x)$ we can write
-\begin{align}
-\label{eq:therm_int}
-0 &= \text{KL}( q^{\infty} \| p ) \\
-&= \text{KL} ( q^0 \| p ) - \int_0^{\infty} \frac{d}{dt} \text{KL} ( q^t \| p ) dt \\
-&= \text{KL}( q^0 \| p ) + \int_0^{\infty} \nabla F_t dt
-\end{align}
+    Opper reasoned this should work for SVGD by analogy to the following, which I think is a more standard gradient
+    flow transportation. Assume that we have a time derivative of the KL divergence that can be written as a gradient.
+    \begin{equation}
+        \frac{d}{dt}\ KL( q^t \| p ) = - \nabla F_t.
+    \end{equation}
+    Where $q(x)$ is a variational distribution trying to approximate $p(x)$ the true posterior distributions
+    Assuming that this converges in the sense that the final distribution $q^{\infty}$ has 0 KL divergence with 
+    $p(x)$ we can write
+    \begin{align}
+    \label{eq:therm_int}
+    0 &= \text{KL}( q^{\infty} \| p ) \\
+    &= \text{KL} ( q^0 \| p ) - \int_0^{\infty} \frac{d}{dt} \text{KL} ( q^t \| p ) dt \\
+    &= \text{KL}( q^0 \| p ) + \int_0^{\infty} \nabla F_t dt
+    \end{align}
 
-The second ingredient to finding $\log Z$ from this is the assumption that $p(x) = \frac{ e^{-V(x)} }{ Z }$, 
-where $Z = \int e^{-V(x, y)} dx$ is the evidence. In this case we can write
-\begin{align}
-\label{eq:gibbs_kl}
-    \text{KL}( q^t \| p ) &= \int_X q^t(x) \log \frac{ q^t(x) }{ p(x) } dx \\
-                    &= \int_X q^t(x) \log q^t(x) - q^t(x) \log \frac{ e^{-V(x, y)} }{ Z } dx \\
-                    &= \int_X q^t(x) \log q^t(x) dx + \int_X q^t(x) V(x, y) dx + \log Z \int_X q^t(x) dx \\
-                    &= \int_X q^t(x) \log q^t(x) dx + \int_X q^t(x) V(x, y) dx + \log Z
-\end{align}
+    The second ingredient to finding $\log Z$ from this is the assumption that $p(x) = \frac{ e^{-V(x)} }{ Z }$, 
+    where $Z = \int e^{-V(x)} dx$ is the evidence. In this case we can write
+    \begin{align}
+    \label{eq:gibbs_kl}
+        \text{KL}( q^t \| p ) &= \int_X q^t(x) \log \frac{ q^t(x) }{ p(x) } dx \\
+                        &= \int_X q^t(x) \log q^t(x) - q^t(x) \log \frac{ e^{-V(x)} }{ Z } dx \\
+                        &= \int_X q^t(x) \log q^t(x) dx + \int_X q^t(x) V(x) dx + \log Z \int_X q^t(x) dx \\
+                        &= \int_X q^t(x) \log q^t(x) dx + \int_X q^t(x) V(x) dx + \log Z
+    \end{align}
 
-Now the first term in (\ref{eq:therm_int}) is (\ref{eq:gibbs_kl}) at $t=0$ and the integrand in the second term is
-what is calculated at every step in the original algorithm, so it the integral can be estimated, allowing us to 
-recover $\log Z$. SVGD does not actually calculate the full time derivative at every step, but the theory does 
-include an analytical expression for it so this method should work with SVGD as well.
+    Now the first term in (\ref{eq:therm_int}) is (\ref{eq:gibbs_kl}) at $t=0$ and the integrand in the second term is
+    what is calculated at every step in the original algorithm, so it the integral can be estimated, allowing us to 
+    recover $\log Z$. SVGD does not actually calculate the full time derivative at every step, but the theory does 
+    include an analytical expression for it so this method should work with SVGD as well.
 
-This gives us $\log Z$ as :
-\begin{align}
-\label{eq:log_z}
-    \log Z = - \int_X q^t(x) [\log q^t(x) dx +  V(x, y)] dx 
-        - \int_0^\infty \nabla F_t dt
-\end{align}
+    This gives us $\log Z$ as :
+    \begin{align}
+    \label{eq:log_z}
+        \log Z = - \int_X q^t(x) [\log q^t(x) dx +  V(x)] dx 
+            - \int_0^\infty \nabla F_t dt
+    \end{align}
 
 
-\newpage
-\subsection{Estimating the Gradient for SVGD}
-The time derivative of the KL divergence is not a true gradient nonetheless we should be able to use
-(\ref{eq:svgd}) in combination with (\ref{eq:phi_max}) to approximate the second term in (\ref{eq:log_z}).
-Combining the two the derivate of the KL divergence, expressed in terms of the kernel of the RKHS, is:
-\begin{align}
-    \label{eq:F_approximation}
-    -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla \log p(x_i)^\top \nabla \log p(x_i)  \\ 
-    -& 2 \frac{1}{n}\sum_{x_i,x_j}^n  \nabla_{1} k(x_i,x_j)^\top \nabla \log p(x_i)  \\ 
-    +& \frac{1}{n}\sum_{x_i,x_j}^n \left( \sum_k \frac{ \partial^2 }{ \partial (x_i)_k \partial (x_j)_k } 
-        k(x_i,x_j) \right)
-\end{align}
+    \newpage
 
-In order to simplify the implementation/optimize it we can rewrite this as
-% In order to simplify the implementation we can write this in terms of matrix multiplications,
-% let 
-% $$K_{ij} = k(x_i,x_j) $$
-be the matrix of kernel pairwise evaluations on the particles,
-$$GK(x_i)_{\cdot j} = \nabla_{1} k(x_i,x_j)$$
-% what is a good way to indicate rows of columns of a matrix?
-be the matrix whose columns are the gradients of the kernel (with respect 
-to the first argument) evaluated at $(x_i, x_j)$ (so the columns of $GK(x_i)$ are the gradients with first argument
-held fixed at $x_i$ and second argument $j$=column number, and let 
-$$GLP_{\cdot j} = \nabla \log p(x_j)$$
-the matrix whose
-columns are the gradient of the log probability evaluated at each particle, then
+\subsection{Computing Thermodynamic integration}
+\subsubsection{Estimating the Gradient for SVGD}
+    The time derivative of the KL divergence is not a true gradient nonetheless we should be able to use
+    (\ref{eq:svgd}) in combination with (\ref{eq:phi_max}) to approximate the second term in (\ref{eq:log_z}).
+    Combining the two the derivate of the KL divergence, expressed in terms of the kernel of the RKHS, is:
+    \begin{align}
+        \label{eq:F_approximation}
+        \frac{d}{dt}\ KL( q^t \| p ) = -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla_{x_i} \log p(x_i)^\top \nabla_{x_j} \log p(x_j)  \\ 
+        -& \frac{1}{n}\sum_{x_i,x_j}^n  \nabla_{x_i} k(x_i,x_j)^\top \nabla_{x_j} \log p(x_j)  \\ 
+        -& \frac{1}{n}\sum_{x_i,x_j}^n  \nabla_{x_j} k(x_i,x_j)^\top \nabla_{x_i} \log p(x_i)  \\ 
+        -& \frac{1}{n}\sum_{x_i,x_j}^n \left( \sum_k \frac{ \partial^2 }{ \partial (x_i)_k \partial (x_j)_k } 
+            k(x_i,x_j) \right)
+    \end{align}
 
-% \begin{align}
-%     \label{eq:F_approx_matrix}
-%     -& \frac{1}{n}  \sum_{x_i}^n \nabla \log p(x_i)^\top K \nabla \log p(x_i)  \\ 
-%     -& 2 \frac{1}{n}\sum_{x_i}^n  GK(x_i) GLP  \\
-%     +& \frac{1}{n}\sum_{x_i,x_j}^n \left( \sum_k \frac{ \partial^2 }{ \partial (x_i)_k \partial (x_j)_k } 
-%         k(x_i,x_j) \right)
-% \end{align}
+    When using an RBF kernel we can use the additional simplifications (see Appendix) reducing the approximation to
 
-\begin{align}
-    \label{eq:F_approx_matrix}
-    - \frac{1}{n}  \Bigg( &\sum_{i}^n \| \nabla \log p(x_i) \|^2 \sum_{x_j}^{n}k(x_i,x_j) \\ 
-    -& 2 \sum_{i}^n  GK(x_i) GLP  \\
-    +& \sum_{i}^n \Big( \sum_k \frac{ \partial^2 }{ \partial (x_i)_k \partial (x_i)_k } k(x_i,x_i) \Big) \\ 
-    +& 2\sum_{i<j}^n \Big( \sum_k \frac{ \partial^2 }{ \partial (x_i)_k \partial (x_j)_k } 
-        k(x_i,x_j) \Big)\Bigg)
-\end{align}
+    \begin{align}
+        \frac{d}{dt}\ KL( q^t \| p ) \approx -& \frac{1}{n^2}\sum_{x_i,x_j}^n  \Bigg[
+            k(x_i,x_j) \Bigg( \nabla_{x_i} \log p(x_i)^\top \nabla_{x_j} \log p(x_j)  
+            + \frac{2}{h}\Big( d - \frac{2}{h} \|x_i - x_j\|^2 \Big) \Bigg)
+        \Bigg]
+    \end{align} 
+    % In order to simplify the implementation/optimize it we can rewrite this as
+    % % In order to simplify the implementation we can write this in terms of matrix multiplications,
+    % % let 
+    % % $$K_{ij} = k(x_i,x_j) $$
+    % be the matrix of kernel pairwise evaluations on the particles,
+    % $$GK(x_i)_{\cdot j} = \nabla_{1} k(x_i,x_j)$$
+    % % what is a good way to indicate rows of columns of a matrix?
+    % be the matrix whose columns are the gradients of the kernel (with respect 
+    % to the first argument) evaluated at $(x_i, x_j)$ (so the columns of $GK(x_i)$ are the gradients with first argument
+    % held fixed at $x_i$ and second argument $j$=column number, and let 
+    % $$GLP_{\cdot j} = \nabla \log p(x_j)$$
+    % the matrix whose
+    % columns are the gradient of the log probability evaluated at each particle, then
+
+    % % \begin{align}
+    % %     \label{eq:F_approx_matrix}
+    % %     -& \frac{1}{n}  \sum_{x_i}^n \nabla \log p(x_i)^\top K \nabla \log p(x_i)  \\ 
+    % %     -& 2 \frac{1}{n}\sum_{x_i}^n  GK(x_i) GLP  \\
+    % %     +& \frac{1}{n}\sum_{x_i,x_j}^n \left( \sum_k \frac{ \partial^2 }{ \partial (x_i)_k \partial (x_j)_k } 
+    % %         k(x_i,x_j) \right)
+    % % \end{align}
+
+    % \begin{align}
+    %     \label{eq:F_approx_matrix}
+    %     - \frac{1}{n}  \Bigg( &\sum_{i}^n \| \nabla \log p(x_i) \|^2 \sum_{x_j}^{n}k(x_i,x_j) \\ 
+    %     -& 2 \sum_{i}^n  GK(x_i) GLP  \\
+    %     +& \sum_{i}^n \Big( \sum_k \frac{ \partial^2 }{ \partial (x_i)_k \partial (x_i)_k } k(x_i,x_i) \Big) \\ 
+    %     +& 2\sum_{i<j}^n \Big( \sum_k \frac{ \partial^2 }{ \partial (x_i)_k \partial (x_j)_k } 
+    %         k(x_i,x_j) \Big)\Bigg)
+    % \end{align}
 
 \subsection{Experiments}
-Possible targets to try it on:
-\begin{itemize}
-    \item Gaussians
-    \item neural net
-    \item augmented regression (i.e. with polynomial regressors)
-\end{itemize}
+    Possible targets to try it on:
+    \begin{itemize}
+        \item Gaussians
+        \item neural net
+        \item augmented regression (i.e. with polynomial regressors)
+    \end{itemize}
+
 
 \section{Appendix}
 \subsection{A: Derivation of gradient estimation}
-This appendix contains the calculation to get from the derivative of the KL-divergence in (\ref{eq:svgd})
-to the update for the algorithm in (\ref{eq:F_approximation}).
-Starting with the original theorem and expanding the Stein operator we get
-\begin{align}
-    \frac{d}{dt}\ KL( q^t \| p ) &= - \mathbb{E}_{x \sim q} \left[ \text{trace} \left( \mathcal{A}_q \phi(x) \right) \right] \\
-         &=  - \mathbb{E}_{x \sim q} \left[ 
-             \text{trace} \left( \phi(x) \nabla \log p(x)^\top  + \nabla_x \phi(x) \right)
-         \right]\
-\end{align}
+    This appendix contains the calculation to get from the derivative of the KL-divergence in (\ref{eq:svgd})
+    to the update for the algorithm in (\ref{eq:F_approximation}).
+    Starting with the original theorem and expanding the Stein operator we get
+    \begin{align}
+        \frac{d}{dt}\ KL( q^t \| p ) &= - \mathbb{E}_{x \sim q} \left[ \text{trace} \left( \mathcal{A}_q \phi(x) \right) \right] \\
+             &=  - \mathbb{E}_{x \sim q} \left[ 
+                 \text{trace} \left( \phi(x) \nabla_x \log p(x)^\top  + \nabla_x \phi(x) \right)
+             \right]\
+    \end{align}
 
-Substituting (\ref{eq:phi_max}) for $\phi$ and the second Stein operator
+    Substituting (\ref{eq:phi_max}) for $\phi$ and the second Stein operator
 
-\begin{gather}
-         =  - \mathbb{E}_{x \sim q} \left[ 
-                 \text{trace} \left( \mathbb{E}_{y \sim q} \left[ \mathcal{A}_p k(y,x) \right] \nabla \log p(x)^\top
-                        + \nabla_x \mathbb{E}_{y \sim q } \left[ \mathcal{A}_p k(y, x) \right] \right) 
-                \right] \\
-        =  - \mathbb{E}_{x \sim q} \Big[ 
-                     \text{trace}  \Big(
-                      \mathbb{E}_{y\sim q} \left[ k(y,x) \nabla \log p(y)^\top 
-                      + \nabla_{1} k(y,x) \right] \nabla \log p(x)^\top \\
-               + \nabla_x \mathbb{E}_{x_j \sim q } \left[ 
-                          k(y,x) \nabla \log p(x)^\top 
-                          + \nabla_{1} k(y,x)
-                      \right] 
-              \Big) \Big] \\
-        = - \mathbb{E}_{x \sim q} \Big[ 
-             \text{trace} \Big( \mathbb{E}_{y \sim q} [ k(y,x) \nabla \log p(t)^\top \nabla \log p(x)^\top \Big) \\
-             + \text{trace} \Big( \mathbb{E}_{y \sim q} [ \nabla_{1}  k(y,x) ] \nabla \log p(x)^\top \Big) \\
-             + \text{trace} \Big( \nabla_x \mathbb{E}_{y \sim q} [ k(y,x) \nabla  \log p(y)^\top ] \Big) \\
-             + \text{trace} \Big( \nabla_x \mathbb{E}_{y \sim q} [ \nabla_y  k(y,x)] \Big)
-             \Big] \\
-         = - \mathbb{E}_{x \sim q} \mathbb{E}_{y \sim q} \Big[
-             \text{trace} \Big( k(x,y) \nabla \log p(y) \nabla \log p(x)^\top \Big) \\
-             + \text{trace} \Big( \nabla_y  k(y,x) \nabla \log p(x)^\top \Big) \\
-             + \text{trace} \Big( \nabla_x k(y,x) \nabla  \log p(y)^\top \Big) \\
-             + \text{trace} \Big( \nabla_x \nabla_y  k(y,x) \Big) 
-\end{gather}
+    \begin{gather}
+             =  - \mathbb{E}_{x \sim q} \left[ 
+                     \text{trace} \left( \mathbb{E}_{y \sim q} \left[ \mathcal{A}_p k(y,x) \right] \nabla_x \log p(x)^\top
+                            + \nabla_x \mathbb{E}_{y \sim q } \left[ \mathcal{A}_p k(y, x) \right] \right) 
+                    \right] \\
+            =  - \mathbb{E}_{x \sim q} \Big[ 
+                         \text{trace}  \Big(
+                          \mathbb{E}_{y\sim q} \left[ k(y,x) \nabla_y \log p(y)^\top 
+                          + \nabla_{y} k(y,x) \right] \nabla_x \log p(x)^\top \\
+                   + \nabla_x \mathbb{E}_{y \sim q } \left[ 
+                              k(y,x) \nabla_y \log p(x)^\top 
+                              + \nabla_{y} k(y,x)
+                          \right] 
+                  \Big) \Big] \\
+            = - \mathbb{E}_{x \sim q} \Big[ 
+                 \text{trace} \Big( \mathbb{E}_{y \sim q} [ k(y,x) \nabla_y \log p(y)^\top \nabla_x \log p(x)^\top \Big) \\
+                 + \text{trace} \Big( \mathbb{E}_{y \sim q} [ \nabla_{y}  k(y,x) ] \nabla_x \log p(x)^\top \Big) \\
+                 + \text{trace} \Big( \nabla_x \mathbb{E}_{y \sim q} [ k(y,x) \nabla_y  \log p(y)^\top ] \Big) \\
+                 + \text{trace} \Big( \nabla_x \mathbb{E}_{y \sim q} [ \nabla_y  k(y,x)] \Big)
+                 \Big] \\
+             = - \mathbb{E}_{x \sim q} \mathbb{E}_{y \sim q} \Big[
+                 \text{trace} \Big( k(y,x) \nabla_y \log p(y) \nabla_x \log p(x)^\top \Big) \\
+                 + \text{trace} \Big( \nabla_y  k(y,x) \nabla_x \log p(x)^\top \Big) \\
+                 + \text{trace} \Big( \nabla_x k(y,x) \nabla_y  \log p(y)^\top \Big) \\
+                 + \text{trace} \Big( \nabla_x \nabla_y  k(y,x) \Big) 
+    \end{gather}
 
-The trace of an outer product is simply the inner product of the same vectors so the above can 
-be further simplified to
+    The trace of an outer product is simply the inner product of the same vectors so the above can 
+    be further simplified to
 
-\begin{align}
-    \frac{d}{dt} \text{KL}( q^t \| p ) = - \mathbb{E}_{x\sim q} \mathbb{E}_{y \sim q} \big[
-        & k(x,y) (\nabla_y \log p(y))^\top \nabla_x \log p(x) \\
-        &+ (\nabla_y k(x,y) )^\top \nabla_x \log p(x) \\
-        &+ (\nabla_x k(x,y) )^\top \nabla_y \log p(y) \\
-        &+ \sum_i \frac{ \partial^2 }{ \partial x_i \partial y_i } k(x,y) \big]
-\end{align}
-\begin{align}
-    \frac{d}{dt}    ( q^t \| p ) =
-    -& \mathbb{E}_{x,y\sim q} \left[ k(x,y) (\nabla_y \log p(y))^\top \nabla \log p(x) \right] \\ 
-    +& 2 \mathbb{E}_{x,y\sim q} \left[ (\nabla_x k(x,y) )^\top \nabla \log p(y) \right] \\ 
-    +& \mathbb{E}_{x,y\sim q} \left[ \sum_i \frac{ \partial^2 }{ \partial x_i \partial y_i } k(x,y) \right]
-\end{align}
+    \begin{align}
+        \frac{d}{dt} \text{KL}( q^t \| p ) = - \mathbb{E}_{x\sim q} \mathbb{E}_{y \sim q} \big[
+            & k(x,y) (\nabla_y \log p(y))^\top \nabla_x \log p(x) \\
+            &+ (\nabla_y k(x,y) )^\top \nabla_x \log p(x) \\
+            &+ (\nabla_x k(x,y) )^\top \nabla_y \log p(y) \\
+            &+ \sum_i \frac{ \partial^2 }{ \partial x_i \partial y_i } k(x,y) \big]
+    \end{align}
+    \begin{align}
+        \frac{d}{dt} \text{KL} ( q^t \| p ) =
+        -& \mathbb{E}_{x,y\sim q} \left[ k(x,y) \nabla_y \log p(y)^\top \nabla \log p(x) \right] \\ 
+        -& \mathbb{E}_{x,y\sim q} \left[ \nabla_x k(x,y)^\top \nabla_y \log p(y) \right] \\ 
+        -& \mathbb{E}_{x,y\sim q} \left[ \nabla_y k(x,y^\top \nabla_x \log p(x) \right] \\ 
+        -& \mathbb{E}_{x,y\sim q} \left[ \sum_i \frac{ \partial^2 }{ \partial x_i \partial y_i } k(x,y) \right]
+    \end{align}
 
-Inserting $p(x) = \frac{e^{-V(x)}}{Z}$ we get
-\begin{align}
-    \frac{d}{dt} \text{KL}( q^t \| p ) =
-    -& \mathbb{E}_{x,y\sim q} \left[ k(x,y) \nabla_y V(x)^\top \nabla_x V(x) \right] \\ 
-    +& 2 \mathbb{E}_{x,y\sim q} \left[ \nabla_x k(x,y)^\top \nabla_y V(y) \right] \\ 
-    +& \mathbb{E}_{x,y\sim q} \left[ \sum_i \frac{ \partial^2 }{ \partial x_i \partial y_i } k(x,y) \right]
-    .
-\end{align}
-Approximating $q$ with the empirical distribution
-(Note that in this step the meaning of the indices changed. Before $x_i$ indicated the $i^{th}$
-coordinate of the vector $x$, below $x_i$ denotes the $i^{th}$ particle and $(x_i)_k$ denotes
-its $k^{th}$ coordinate.
-\begin{align}
-    -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla_{x_i} V(x_i)^\top \nabla_{x_i} V(x_i)  \\ 
-    -& 2 \frac{1}{n}\sum_{x_i,x_j}^n  \nabla_{x_i} k(x_i,x_j)^\top \nabla_{x_i} V(x_j)  \\ 
-    +& \frac{1}{n}\sum_{x_i,x_j}^n \left( \sum_k \frac{ \partial^2 }{ \partial (x_i)_k \partial (x_j)_k } 
-        k(x_i,x_j) \right)
-\end{align}
+    Now $\nabla_x k(y,x) = - \nabla_y k(y,x)$ for stationary kernels, and since we add the trace and the expectation of 
+    the second and third terms, both of which are linear functions, they cancel.
+    When using the RBF kernel we can also simplify the last term because in that case $\nabla_x k(x,y) = -\frac{2}{h} (x-y) k(x,y) $,
+    or $\partial_{x_i} k(x,y) = -\frac{2}{h} (x_i - y_i) k(x,y)$. Using this 
+    \begin{align}
+        &\text{trace} \Big( \nabla_x \nabla_y k(x,y) \Big) \\
+        = &\text{trace} \Big( \nabla_x \big( \frac{2}{h} (x-y)k(x,y) \big) \Big) \\
+        = &\frac{2}{h} \sum_{i}^{n} k(x,y) + (x_i - y_i) \partial_{x_i} k(x,y) \\
+        = & \frac{2k(x,y)}{h}\Big( d - \frac{2}{h}\|x-y\|^2 \Big)
+    \end{align}
+    where $d$ is the dimensionality of $x$
+    reducing the derivative to
+    \begin{align}
+        \frac{d}{dt}\ KL( q^t \| p ) = - \mathbb{E}_{x,y\sim q} \Bigg[ &k(x,y) \nabla_y \log p(y)^\top \nabla \log p(x) \\ 
+        +& \frac{2k(x,y)}{h}\Big( d - \frac{2}{h}\|x-y\|^2 \Big)\Bigg].
+    \end{align}
 
-The SVGD update written in terms of $V(x)$ is $x_i^{l+1} = x_i^l + \epsilon_l \phi(x_n^l)$
-\begin{align}
-    \phi(x) = \frac{1}{n} \sum_{i=0}^{n} \left[
-        - k(x_i^l, x) \nabla V(x_i^l) + \nabla k(x_i^l, x)
-    \right]
-\end{align}
-where the gradient in the second term is taken with respect to the first variable.
-\end{document}
+    Approximating $q$ with the empirical distribution
+    (Note that in this step the meaning of the indices changed. Before $x_i$ indicated the $i^{th}$
+    coordinate of the vector $x$, below $x_i$ denotes the $i^{th}$ particle and $(x_i)_k$ denotes
+    its $k^{th}$ coordinate.
+    For arbitrary kernels we get
+    \begin{align}
+        \frac{d}{dt}\ KL( q^t \| p ) \approx -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla_{x_i} V(x_i)^\top \nabla_{x_j} V(x_j)  \\ 
+        -& \frac{1}{n}\sum_{x_i,x_j}^n  \nabla_{x_i} k(x_i,x_j)^\top \nabla_{x_j} V(x_j)  \\ 
+        -& \frac{1}{n}\sum_{x_i,x_j}^n  \nabla_{x_j} k(x_i,x_j)^\top \nabla_{x_i} V(x_i)  \\ 
+        -& \frac{1}{n}\sum_{x_i,x_j}^n \left( \sum_k \frac{ \partial^2 }{ \partial (x_i)_k \partial (x_j)_k } 
+            k(x_i,x_j) \right)
+    \end{align}
+    which simplifies to 
+    \begin{align}
+        \frac{d}{dt}\ KL( q^t \| p ) \approx -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla_{x_i} V(x_i)^\top \nabla_{x_i} V(x_i)  \\ 
+        -& \frac{1}{n}\sum_{x_i,x_j}^n \frac{2k(x_i, x_j)}{h}\Big( d - \frac{2}{h} \|x_i - x_j\|^2 \Big)
+    \end{align} 
+
+    % not sure if the stuff below will be needed
+    Inserting $p(x) = \frac{e^{-V(x)}}{Z}$ we would get
+    \begin{align}
+        \frac{d}{dt} \text{KL}( q^t \| p ) =
+        -& \mathbb{E}_{x,y\sim q} \left[ k(x,y) \nabla_y V(x)^\top \nabla_x V(x) \right] \\ 
+        -& \mathbb{E}_{x,y\sim q} \left[ \nabla_x k(x,y)^\top \nabla_y V(y) \right] \\ 
+        -& \mathbb{E}_{x,y\sim q} \left[ \nabla_x k(x,y)^\top \nabla_x V(x) \right] \\ 
+        -& \mathbb{E}_{x,y\sim q} \left[ \sum_i \frac{ \partial^2 }{ \partial x_i \partial y_i } k(x,y) \right]
+        .
+    \end{align}
+
+    The SVGD update written in terms of $V(x)$ is $x_i^{l+1} = x_i^l + \epsilon_l \phi(x_n^l)$
+    \begin{align}
+        \phi(x) = \frac{1}{n} \sum_{i=0}^{n} \left[
+            - k(x_i^l, x) \nabla V(x_i^l) + \nabla k(x_i^l, x)
+        \right]
+    \end{align}
+    where the gradient in the second term is taken with respect to the first variable.
+    \end{document}
