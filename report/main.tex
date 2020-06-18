@@ -115,19 +115,20 @@
     Combining the two the derivate of the KL divergence, expressed in terms of the kernel of the RKHS, is:
     \begin{align}
         \label{eq:F_approximation}
-        \frac{d}{dt}\ KL( q^t \| p ) = -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla_{x_i} \log p(x_i)^\top \nabla_{x_j} \log p(x_j)  \\ 
-        -& \frac{1}{n}\sum_{x_i,x_j}^n  \nabla_{x_i} k(x_i,x_j)^\top \nabla_{x_j} \log p(x_j)  \\ 
-        -& \frac{1}{n}\sum_{x_i,x_j}^n  \nabla_{x_j} k(x_i,x_j)^\top \nabla_{x_i} \log p(x_i)  \\ 
-        -& \frac{1}{n}\sum_{x_i,x_j}^n \left( \sum_k \frac{ \partial^2 }{ \partial (x_i)_k \partial (x_j)_k } 
+        \frac{d}{dt}\ KL( q^t \| p ) = -& \frac{1}{n^2}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla_{x_i} \log p(x_i)^\top \nabla_{x_j} \log p(x_j)  \\ 
+        -& \frac{1}{n^2}\sum_{x_i,x_j}^n  \nabla_{x_i} k(x_i,x_j)^\top \nabla_{x_j} \log p(x_j)  \\ 
+        -& \frac{1}{n^2}\sum_{x_i,x_j}^n  \nabla_{x_j} k(x_i,x_j)^\top \nabla_{x_i} \log p(x_i)  \\ 
+        -& \frac{1}{n^2}\sum_{x_i,x_j}^n \left( \sum_k \frac{ \partial^2 }{ \partial (x_i)_k \partial (x_j)_k } 
             k(x_i,x_j) \right)
     \end{align}
 
     When using an RBF kernel we can use the additional simplifications (see Appendix) reducing the approximation to
 
     \begin{align}
-        \frac{d}{dt}\ KL( q^t \| p ) \approx -& \frac{1}{n^2}\sum_{x_i,x_j}^n  \Bigg[
-            k(x_i,x_j) \Bigg( \nabla_{x_i} \log p(x_i)^\top \nabla_{x_j} \log p(x_j)  
-            + \frac{2}{h}\Big( d - \frac{2}{h} \|x_i - x_j\|^2 \Big) \Bigg)
+        \frac{d}{dt}\ KL( q^t \| p ) \approx - \frac{1}{n^2}\sum_{x_i,x_j}^n  \Bigg[
+            k(x_i,x_j)& \Bigg( \nabla_{x_i} \log p(x_i)^\top \nabla_{x_j} \log p(x_j)  \\
+                      &+ \frac{2}{h}(x_i - x_j)^\top \big(\nabla_{x_i} \log p(x_i)  - \nabla_{x_j} \log p(x_j) \big)\\
+                    &+ \frac{2}{h}\Big( d - \frac{2}{h} \|x_i - x_j\|^2 \Big) \Bigg)
         \Bigg]
     \end{align} 
     % In order to simplify the implementation/optimize it we can rewrite this as
