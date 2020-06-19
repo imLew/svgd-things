@@ -101,10 +101,16 @@
     This gives us $\log Z$ as :
     \begin{align}
     \label{eq:log_z}
-        \log Z = - \int_X q^t(x) [\log q^t(x) dx +  V(x)] dx 
-            - \int_0^\infty \nabla F_t dt
+        \log Z &= - \int_X q^0(x) [\log q^0(x) dx +  V(x)] dx - \int_0^\infty F_t dt \\
+            &= -H[q^0] - \mathbb{E}_{q_0}[V(x)] - - \int_0^\infty F_t dt 
     \end{align}
 
+    Suppose $q_0(x) = \mathcal{N}(x; \mu, \Sigma)$ is a $d$-dimensional standard normal distribution, then
+
+    \begin{align}
+        H[q^0] &= \frac{d}{2} + \frac{d}{2} \log 2\pi + \frac{1}{2} \log |\Sigma| \\ 
+        \mathbb{E}_{q_0}[V(x)] &= \frac{1}{2}\mathbb{E}_{q_0}\big[ (x-\mu)^\top \Sigma^{-1} (x-\mu)\big]
+    \end{align}
 
     \newpage
 
@@ -230,22 +236,27 @@
         -& \mathbb{E}_{x,y\sim q} \left[ \sum_i \frac{ \partial^2 }{ \partial x_i \partial y_i } k(x,y) \right]
     \end{align}
 
-    Now $\nabla_x k(y,x) = - \nabla_y k(y,x)$ for stationary kernels, and since we add the trace and the expectation of 
-    the second and third terms, both of which are linear functions, they cancel.
     When using the RBF kernel we can also simplify the last term because in that case $\nabla_x k(x,y) = -\frac{2}{h} (x-y) k(x,y) $,
     or $\partial_{x_i} k(x,y) = -\frac{2}{h} (x_i - y_i) k(x,y)$. Using this 
     \begin{align}
-        &\text{trace} \Big( \nabla_x \nabla_y k(x,y) \Big) \\
+        \text{trace} \Big( \nabla_x \nabla_y k(x,y) \Big) 
         = &\text{trace} \Big( \nabla_x \big( \frac{2}{h} (x-y)k(x,y) \big) \Big) \\
         = &\frac{2}{h} \sum_{i}^{n} k(x,y) + (x_i - y_i) \partial_{x_i} k(x,y) \\
         = & \frac{2k(x,y)}{h}\Big( d - \frac{2}{h}\|x-y\|^2 \Big)
     \end{align}
     where $d$ is the dimensionality of $x$
-    reducing the derivative to
+    reducing the derivative to 
     \begin{align}
-        \frac{d}{dt}\ KL( q^t \| p ) = - \mathbb{E}_{x,y\sim q} \Bigg[ &k(x,y) \nabla_y \log p(y)^\top \nabla \log p(x) \\ 
-        +& \frac{2k(x,y)}{h}\Big( d - \frac{2}{h}\|x-y\|^2 \Big)\Bigg].
-    \end{align}
+        \frac{d}{dt}\ KL( q^t \| p ) \approx - \frac{1}{n^2}\sum_{x_i,x_j}^n  \Bigg[
+            k(x_i,x_j)& \Bigg( \nabla_{x_i} \log p(x_i)^\top \nabla_{x_j} \log p(x_j)  \\
+                      &+ \frac{2}{h}(x_i - x_j)^\top \big(\nabla_{x_i} \log p(x_i)  - \nabla_{x_j} \log p(x_j) \big)\\
+                    &+ \frac{2}{h}\Big( d - \frac{2}{h} \|x_i - x_j\|^2 \Big) \Bigg)
+        \Bigg]
+    \end{align} 
+    % \begin{align}
+    %     \frac{d}{dt}\ KL( q^t \| p ) = - \mathbb{E}_{x,y\sim q} \Bigg[ &k(x,y) \nabla_y \log p(y)^\top \nabla \log p(x) \\ 
+    %     +& \frac{2k(x,y)}{h}\Big( d - \frac{2}{h}\|x-y\|^2 \Big)\Bigg].
+    % \end{align}
 
     Approximating $q$ with the empirical distribution
     (Note that in this step the meaning of the indices changed. Before $x_i$ indicated the $i^{th}$
