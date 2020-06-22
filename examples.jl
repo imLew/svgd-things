@@ -75,27 +75,6 @@ begin  # 1D Gaussian SVGD using Distributions package
        )
 end
 
-<<<<<<< Updated upstream
-begin  # 2d gaussian
-    n_particles = 50
-    e = 1
-    r = 1
-    n_iter = 200
-
-    # target
-    μ = [-2, 8]
-    sig = [9. 0.5; 0.5 1.]  # MvNormal can deal with Int type means but not covariances
-    target = MvNormal(μ, sig)
-    p = rand(target, n_particles)
-    tglp(x) = gradp(target, x)
-
-    # initial
-    μ = [-2, -2]
-    sig = [1. 0.; 0. 1.]  # MvNormal can deal with Int type means but not covariances
-    initial = MvNormal(μ, sig)
-    q_0 = rand(initial, n_particles)
-    q = copy(q_0)
-=======
 discrepancies = [
 discrepancies_50,
 discrepancies_20 ,
@@ -118,7 +97,6 @@ open("discrepancies Gauss 2D", "w") do f
         write(f, "\n")
     end
 end
->>>>>>> Stashed changes
 
 open("variances_of_discrepancies", "w") do f
     write(f, "Variances of Stein Discrepancy at each iteration for 200 iterations with 50, 20 and 10 particles")
