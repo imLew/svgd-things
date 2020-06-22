@@ -22,9 +22,11 @@ function svgd_fit_with_int(q, glp ;n_iter=100, repulsion=1, step_size=1)
     dKL_steps = []
     kernel = TransformedKernel( SqExponentialKernel(), ScaleTransform( 1/sqrt(median_trick(q))))
     while i < n_iter
-        println(i)
+        #= @info "Step" i =#
         i += 1
-        kernel.transform.s .= median_trick(q)
+        #= @info "kernel width" 1/sqrt(median_trick(q)) =#
+        #= @info "better kernel width?" median_trick(q) =#
+        #= kernel.transform.s .= 1/sqrt(median_trick(q)) =#
         q, dKL = svgd_step_with_int(q, kernel, glp, step_size, repulsion)
         int_dKL += step_size*dKL
         push!(dKL_steps, dKL)
@@ -36,7 +38,7 @@ function svgd_step_with_int(X, kernel::Kernel, grad_logp, ϵ, repulsion)
     n = size(X)[end]
     k_mat = kernelmatrix(kernel, X)
     grad_k = kernel_grad_matrix(kernel, X)
-    glp_mat = grad_logp_matrix(grad_logp, X)
+    glp_mat = hcat( grad_logp.(eachcol(X))... )
     if n == 1
         X += ϵ/n *  glp_mat * k_mat 
     else
@@ -56,7 +58,7 @@ function svgd_step_with_int(X, kernel::Kernel, grad_logp, ϵ, repulsion)
         end
     end
     dKL += s/n^2
-    Plots.display( Plots.scatter(X[1,:],X[2,:]))
+    #= Plots.display(plot_svgd_results(q_0, X, p)) =#
     return X, dKL
 end
 
@@ -64,7 +66,7 @@ function svgd_step(X, kernel::Kernel, grad_logp, ϵ, repulsion)
     n = size(X)[end]
     k_mat = kernelmatrix(kernel, X)
     grad_k = kernel_grad_matrix(kernel, X)
-    glp_mat = grad_logp_matrix(grad_logp, X)
+    glp_mat = ghcat( grad_logp.(eachcol(X))... )
     X += ϵ/n * ( glp_mat * k_mat 
                 + repulsion * hcat( sum(grad_k, dims=2)... ) 
                )
@@ -81,18 +83,26 @@ function svgd_fit(q, glp ;n_iter=100, repulsion=1, step_size=1)
     return q
 end
 
-function grad_logp_matrix(grad_logp, X)
-    hcat( grad_logp.(eachcol(X))... )
-end
+#= function grad_logp_matrix(grad_logp, X) =#
+#=     hcat( grad_logp.(eachcol(X))... ) =#
+#= end =#
 
-function kernel_gradient(kernel::Kernel, x, y)
-    gradient(x->kernel(x,y), x)
-end
+#= function kernel_gradient(kernel::Kernel, x, y) =#
+#=     gradient(x->kernel(x,y), x) =#
+#= end =#
 
+"""
+    kernel_grad_matrix(kernel::Kernel, X)
+
+
+Return a matrix containing as its columns the gradients of the given kernel
+with respect to its first argument evaluated at the columns of in the input X.
+"""
 function kernel_grad_matrix(kernel::Kernel, X)
     if size(X)[end] == 1
         return 0
     end
 	mapslices(x -> grad.(kernel, [x], eachcol(X)), X, dims = 1)
 end
+
 
