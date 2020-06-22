@@ -76,10 +76,10 @@ begin  # 1D Gaussian SVGD using Distributions package
 end
 
 begin  # 2d gaussian
-    n_particles = 100
+    n_particles = 50
     e = 1
     r = 1
-    n_iter = 1000
+    n_iter = 200
 
     # target
     μ = [-2, 8]
@@ -89,8 +89,8 @@ begin  # 2d gaussian
     tglp(x) = gradp(target, x)
 
     # initial
-    #= μ = [-2, -2] =#
-    #= sig = [1. 0.; 0. 1.]  # MvNormal can deal with Int type means but not covariances =#
+    μ = [-2, -2]
+    sig = [1. 0.; 0. 1.]  # MvNormal can deal with Int type means but not covariances
     initial = MvNormal(μ, sig)
     q_0 = rand(initial, n_particles)
     q = copy(q_0)
