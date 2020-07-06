@@ -75,31 +75,73 @@ begin  # 1D Gaussian SVGD using Distributions package
        )
 end
 
-begin  # 2d gaussian
-    n_particles = 50
-    e = 1
-    r = 1
-    n_iter = 200
+discrepancies = [
+discrepancies_50,
+discrepancies_20 ,
+discrepancies_10,
+]
 
-    # target
-    μ = [-2, 8]
-    sig = [9. 0.5; 0.5 1.]  # MvNormal can deal with Int type means but not covariances
-    target = MvNormal(μ, sig)
-    p = rand(target, n_particles)
-    tglp(x) = gradp(target, x)
+Plots.plot(
+[10 *var(discrepancies_10, dims=2) 20 *var(discrepancies_20, dims=2) 50 *var(discrepancies_50, dims=2)],
+labels=["10 particles" "20 particles" "50 particles"])
 
-    # initial
-    μ = [-2, -2]
-    sig = [1. 0.; 0. 1.]  # MvNormal can deal with Int type means but not covariances
-    initial = MvNormal(μ, sig)
-    q_0 = rand(initial, n_particles)
-    q = copy(q_0)
+open("discrepancies Gauss 2D", "w") do f
+    write(f, "")
+    write(f, "\n")
+    for d in discrepancies
+        variance = var(d, dims=2)
+        for v in variance
+            write(f, string(v))
+            write(f, ", ")
+        end
+        write(f, "\n")
+    end
+end
 
-    @time q, int_dKL, dKL = svgd_fit_with_int(q, tglp, n_iter=n_iter, repulsion=r, step_size=e)	
-    #= @time q = svgd_fit(q, tglp, n_iter=400, repulsion=r, step_size=e) =#	
-    Plots.plot(dKL)
+open("variances_of_discrepancies", "w") do f
+    write(f, "Variances of Stein Discrepancy at each iteration for 200 iterations with 50, 20 and 10 particles")
+    write(f, "\n")
+    for d in discrepancies
+        variance = var(d, dims=2)
+        for v in variance
+            write(f, string(v))
+            write(f, ", ")
+        end
+        write(f, "\n")
+    end
+end
 
-    #= plot_svgd_results(q_0, q, p) =#
+i = 0 
+while i<100
+    println(i)
+    global i += 1
+    begin  # 2d gaussian
+        n_particles = 20
+        e = 1
+        r = 1
+        n_iter = 200
+
+        # target
+        μ = [-2, 8]
+        sig = [9. 0.5; 0.5 1.]  # MvNormal can deal with Int type means but not covariances
+        target = MvNormal(μ, sig)
+        p = rand(target, n_particles)
+        tglp(x) = gradp(target, x)
+
+        # initial
+        μ = [0, 0]  # [-2, -2]
+        sig = [1. 0.; 0. 1.]  # MvNormal can deal with Int type means but not covariances
+        initial = MvNormal(μ, sig)
+        q_0 = rand(initial, n_particles)
+        q = copy(q_0)
+
+        @time q, int_dKL, dKL = svgd_fit_with_int(q, tglp, n_iter=n_iter, repulsion=r, step_size=e)	
+        global discrepancies_20 = hcat(discrepancies_20, dKL)
+        #= @time q = svgd_fit(q, tglp, n_iter=400, repulsion=r, step_size=e) =#	
+        p1 = Plots.plot(dKL)
+        p2 = plot_svgd_results(q_0, q, p)
+        Plots.plot(p1, p2, layout=(2,1))
+    end
 end
 
 begin  # 2d gaussian mixture
