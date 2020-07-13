@@ -3,6 +3,7 @@ using PyPlot
 using Distributions
 using DataFrames
 using CSV
+using ForwardDiff
 
 
 
@@ -27,9 +28,46 @@ begin # util functions
 
     function gradp(d::Distribution, x)
         if length(x) == 1
-            x = x[1]
+            #= x = x[1] =#
+            return gradient(x->log(pdf.(d, x)[1]), x )[1]
         end
-        gradient(x->log(pdf(d, x)), reshape(x, length(x)) )[1]
+        ForwardDiff.gradient(x->log(pdf(d, x)), reshape(x, length(x)) )
+    end
+
+    function collect_stein_discrepancies(;particle_sizes, problem_function, dir_name, 
+                                         n_samples=100)
+        result = Dict()
+        particle_sizes = [10, 20, 50, 100]
+        for n_particles in particle_sizes
+            result["$n_particles"] = []
+            i = 0
+            while i<n_samples
+                q, int_dKL, dKL = problem_function(n_particles=n_particles)
+                push!(result["$n_particles"], dKL)
+                @info "step" n_particles, i
+                i += 1
+            end
+        end
+        if isdir(dir_name)
+            dir_name = dir_name*"_results"
+        end
+        mkdir(dir_name)
+        for s in particle_sizes
+            CSV.write(joinpath(dir_name,"$s"*"_particles"), 
+                      DataFrame(result["$s"]), 
+                      writeheader=false)
+        end
+    end
+
+    function plot_discrep(filename, func; n_iter=nothing, title=nothing, label=nothing)
+        file = CSV.File(filename; header=false)
+        df = DataFrame(file)
+        n_tot = length(df[1])
+        if n_iter == nothing
+            n_iter = n_tot-1
+        end
+        Plots.plot([n_tot-n_iter : n_tot...], func(df)[end-n_iter:end], title=title,
+        label=label)
     end
 
     function normal_dist(x, μ, Σ)
@@ -59,11 +97,12 @@ function gaussian_1d_mixture(;n_particles=100, step_size=1, repulsion=1, n_iter=
     return q, q_0, p, dKL
 end
 
+X = gaussian_1d_mixture(n_iter=5)
+
 collect_stein_discrepancies(particle_sizes=[10, 50, 100, 200, 300], 
                             problem_function=gaussian_2d, 
                             dir_name="gaussian_1D_mixture", 
                             n_samples=10)
-
 
 
 function plot_discrep(filename, func; n_iter=nothing, title=nothing, label=nothing)
@@ -101,30 +140,7 @@ function gaussian_2d(;n_particles=100, step_size=1, repulsion=1, n_iter=500,
     return q, q_0, p, dKL
 end
 
-function collect_stein_discrepancies(;particle_sizes, problem_function, dir_name, 
-                                     n_samples=100)
-    result = Dict()
-    particle_sizes = [10, 20, 50, 100]
-    for n_particles in particle_sizes
-        result["$n_particles"] = []
-        i = 0
-        while i<n_samples
-            q, int_dKL, dKL = problem_function(n_particles=n_particles)
-            push!(result["$n_particles"], dKL)
-            @info "step" n_particles, i
-            i += 1
-        end
-    end
-    if isdir(dir_name)
-        dir_name = dir_name*"_results"
-    end
-    mkdir(dir_name)
-    for s in particle_sizes
-        CSV.write(joinpath(dir_name,"$s"*"_particles"), 
-                  DataFrame(result["$s"]), 
-                  writeheader=false)
-    end
-end
+gaussian_2d(n_particles=10, n_iter=2)
 
 result = Dict()
 for n_particles in [10, 20, 50, 100]
