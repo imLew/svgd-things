@@ -10,7 +10,7 @@ function median_trick(x)
     if size(x)[end] == 1
         return 1
     end
-    d = Distances.pairwise(Euclidean(), x)
+    d = Distances.pairwise(Euclidean(), x, dims=2)
     Statistics.median(d)^2/log(size(x)[end])
 end
 
@@ -30,11 +30,12 @@ function svgd_fit_with_int(q, glp ;n_iter=100, repulsion=1, step_size=1)
         q, dKL = svgd_step_with_int(q, kernel, glp, step_size, repulsion)
         int_dKL += step_size*dKL
         push!(dKL_steps, dKL)
+        # Plots.display(plot_svgd_results(q_0, q, p, title="$i"))
     end
     return q, int_dKL, dKL_steps
 end
 
-function svgd_step_with_int(X, kernel::Kernel, grad_logp, ϵ, repulsion)
+function svgd_step_with_int(X, kernel::KernelFunctions.Kernel, grad_logp, ϵ, repulsion)
     n = size(X)[end]
     k_mat = kernelmatrix(kernel, X)
     grad_k = kernel_grad_matrix(kernel, X)
@@ -58,11 +59,10 @@ function svgd_step_with_int(X, kernel::Kernel, grad_logp, ϵ, repulsion)
         end
     end
     dKL += s/n^2
-    #= Plots.display(plot_svgd_results(q_0, X, p)) =#
     return X, dKL
 end
 
-function svgd_step(X, kernel::Kernel, grad_logp, ϵ, repulsion)
+function svgd_step(X, kernel::KernelFunctions.Kernel, grad_logp, ϵ, repulsion)
     n = size(X)[end]
     k_mat = kernelmatrix(kernel, X)
     grad_k = kernel_grad_matrix(kernel, X)
@@ -87,18 +87,16 @@ end
 #=     hcat( grad_logp.(eachcol(X))... ) =#
 #= end =#
 
-#= function kernel_gradient(kernel::Kernel, x, y) =#
+#= function kernel_gradient(kernel::KernelFunctions.Kernel, x, y) =#
 #=     gradient(x->kernel(x,y), x) =#
 #= end =#
 
 """
-    kernel_grad_matrix(kernel::Kernel, X)
-
-
+    kernel_grad_matrix(kernel::KernelFunctions.Kernel, X)
 Return a matrix containing as its columns the gradients of the given kernel
 with respect to its first argument evaluated at the columns of in the input X.
 """
-function kernel_grad_matrix(kernel::Kernel, X)
+function kernel_grad_matrix(kernel::KernelFunctions.Kernel, X)
     if size(X)[end] == 1
         return 0
     end
