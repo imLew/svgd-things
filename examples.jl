@@ -1,23 +1,27 @@
 using Plots
 using PyPlot
 using Distributions
+using DataFrames
+using CSV
 
 
 
 ## Sampling
 begin # util functions
-    function plot_svgd_results(q_0, q, p)
+    function plot_svgd_results(q_0, q, p; title)
         d = size(q)[1]
         if d == 2
             Plots.scatter([q_0[1,:] q[1,:] p[1,:]],
                           [q_0[2,:] q[2,:] p[2,:]], 
                           markercolor=["blue" "red" "green"], 
                           label=["q_0" "q" "p"], 
-                          legend = :outerleft)
+                          legend = :outerleft,
+                          title=title)
         elseif d == 3
             Plots.scatter([q_0[1,:] q[1,:] p[1,:]],[q_0[2,:] q[2,:] p[2,:]],
                           [q_0[3,:] q[3,:] p[3,:]], 
-                            markercolor=["blue" "red" "green"])
+                            markercolor=["blue" "red" "green"],
+                            title=title)
         end
     end
 
@@ -43,133 +47,131 @@ begin # util functions
 end
 
 
-begin  # 1D Gaussian SVGD using Distributions package
-    # general params
-    n_particles = 50
-    e = 1
-    r = 1
-    n_iter = 100
-
-    μ₁ = -2
-    Σ₁ = 1
-    μ₂ = 2
-    Σ₂ = 1
-
-    #= # target mixture =#
+function gaussian_1d_mixture(;n_particles=100, step_size=1, repulsion=1, n_iter=500,
+                                μ₁ = -2, Σ₁ = 1, μ₂ = 2, Σ₂ = 1)
     target = MixtureModel(Normal[ Normal(μ₁, Σ₁), Normal(μ₂, Σ₂) ], [1/3, 2/3])
     p = rand(target, n_particles)
     tglp(x) = gradp(target, x)
-
-    # initial guess is a simple gaussian far from the target
     initial_dist = Normal(-10)
     q_0 = rand(initial_dist, (1, n_particles) )
     q = copy(q_0)
-
-    #run svgd
-    @time q = svgd_fit(q, tglp, n_iter=100, repulsion=r, step_size=e)	
-
-    Plots.histogram(
-                    [reshape(q_0,n_particles) reshape(q,n_particles) reshape(p,n_particles)],	
-        bins=15,
-        alpha=0.5
-       )
+    svgd_fit_with_int(q, tglp, n_iter=n_iter, repulsion=repulsion, step_size=step_size)	
 end
 
-discrepancies = [
-discrepancies_50,
-discrepancies_20 ,
-discrepancies_10,
-]
+collect_stein_discrepancies(particle_sizes=[10, 50, 100, 200, 300], 
+                            problem_function=gaussian_2d, 
+                            dir_name="gaussian_1D_mixture", 
+                            n_samples=10)
 
-Plots.plot(
-[10 *var(discrepancies_10, dims=2) 20 *var(discrepancies_20, dims=2) 50 *var(discrepancies_50, dims=2)],
-labels=["10 particles" "20 particles" "50 particles"])
 
-open("discrepancies Gauss 2D", "w") do f
-    write(f, "")
-    write(f, "\n")
-    for d in discrepancies
-        variance = var(d, dims=2)
-        for v in variance
-            write(f, string(v))
-            write(f, ", ")
-        end
-        write(f, "\n")
+
+function plot_discrep(filename, func; n_iter=nothing, title=nothing, label=nothing)
+    file = CSV.File(filename; header=false)
+    df = DataFrame(file)
+    n_tot = length(df[1])
+    if n_iter == nothing
+        n_iter = n_tot-1
     end
+    Plots.plot([n_tot-n_iter : n_tot...], func(df)[end-n_iter:end], title=title,
+    label=label)
 end
 
-open("variances_of_discrepancies", "w") do f
-    write(f, "Variances of Stein Discrepancy at each iteration for 200 iterations with 50, 20 and 10 particles")
-    write(f, "\n")
-    for d in discrepancies
-        variance = var(d, dims=2)
-        for v in variance
-            write(f, string(v))
-            write(f, ", ")
-        end
-        write(f, "\n")
+for n in [10, 20, 50, 100]
+    if n != 100
+        plot_discrep("collected_data/2d_gaussian_mixture/dKL_"*string(n)*"_particles",
+                     x->mean(eachcol(x)),
+                     # n_iter=100,
+                     title="2D Gaussian Mixture Sampling with "*string(n)*" Particles",
+                     label="Mean of Empirical Stein Discrepancy 100 Runs")
+    else
+        plot_discrep("collected_data/2d_gaussian_mixture/dKL_"*string(n)*"_particles",
+                     x->mean(eachcol(x)),
+                     # n_iter=100,
+                     title="2D Gaussian Mixture Sampling with "*string(n)*" Particles",
+                     label="Mean of Empirical Stein Discrepancy 10 Runs")
     end
+    Plots.savefig("plots/gaussian_mixture2d_"*string(n)*"_mean.png")
+    pause(5)
 end
 
-i = 0 
-while i<100
-    println(i)
-    global i += 1
-    begin  # 2d gaussian
-        n_particles = 20
-        e = 1
-        r = 1
-        n_iter = 200
 
-        # target
-        μ = [-2, 8]
-        sig = [9. 0.5; 0.5 1.]  # MvNormal can deal with Int type means but not covariances
-        target = MvNormal(μ, sig)
-        p = rand(target, n_particles)
-        tglp(x) = gradp(target, x)
-
-        # initial
-        μ = [0, 0]  # [-2, -2]
-        sig = [1. 0.; 0. 1.]  # MvNormal can deal with Int type means but not covariances
-        initial = MvNormal(μ, sig)
-        q_0 = rand(initial, n_particles)
-        q = copy(q_0)
-
-        @time q, int_dKL, dKL = svgd_fit_with_int(q, tglp, n_iter=n_iter, repulsion=r, step_size=e)	
-        global discrepancies_20 = hcat(discrepancies_20, dKL)
-        #= @time q = svgd_fit(q, tglp, n_iter=400, repulsion=r, step_size=e) =#	
-        p1 = Plots.plot(dKL)
-        p2 = plot_svgd_results(q_0, q, p)
-        Plots.plot(p1, p2, layout=(2,1))
-    end
-end
-
-begin  # 2d gaussian mixture
-    n_particles = 1
-    e = 1
-    r = 1
-    n_iter = 200
-
-    # target
-    μ₁ = [5, 3]
-    Σ₁ = [9. 0.5; 0.5 1.]  # MvNormal can deal with Int type means but not covariances
-    μ₂ = [7, 0]
-    Σ₂ = [1. 0.1; 0.1 7.]  # MvNormal can deal with Int type means but not covariances
-    target = MixtureModel(MvNormal[ MvNormal(μ₁, Σ₁), MvNormal(μ₂, Σ₂) ], [0.5, 0.5])
+function gaussian_2d(;n_particles=100, step_size=1, repulsion=1, n_iter=500,
+                     μ_target=[-2, 8], Σ_target=[9. 0.5; 0.5 1.],
+                     μ_initial = [0, 0], Σ_initial = [1. 0.; 0. 1.])
+    target = MvNormal(μ_target, Σ_target)
     p = rand(target, n_particles)
     tglp(x) = gradp(target, x)
-
-    # initial
-    μ = [0, 0]
-    sig = [1. 0.; 0. 1.]  # MvNormal can deal with Int type means but not covariances
-    initial = MvNormal(μ, sig)
+    initial = MvNormal(μ_initial, Σ_initial)
     q_0 = rand(initial, n_particles)
     q = copy(q_0)
+    svgd_fit_with_int(q, tglp, n_iter=n_iter, repulsion=repulsion, step_size=step_size)	
+end
 
-    @time q, int_dKL, dKL = svgd_fit_with_int(q, tglp, n_iter=n_iter, repulsion=r, step_size=e)	
-    #= @time q = svgd_fit(q, tglp, n_iter=400, repulsion=r, step_size=e) =#	
-    Plots.plot(dKL)
-    #= plot_svgd_results(q_0, q, p) =#
+function collect_stein_discrepancies(;particle_sizes, problem_function, dir_name, 
+                                     n_samples=100)
+    result = Dict()
+    particle_sizes = [10, 20, 50, 100]
+    for n_particles in particle_sizes
+        result["$n_particles"] = []
+        i = 0
+        while i<n_samples
+            q, int_dKL, dKL = problem_function(n_particles=n_particles)
+            push!(result["$n_particles"], dKL)
+            @info "step" n_particles, i
+            i += 1
+        end
+    end
+    if isdir(dir_name)
+        dir_name = dir_name*"_results"
+    end
+    mkdir(dir_name)
+    for s in particle_sizes
+        CSV.write(joinpath(dir_name,"$s"*"_particles"), 
+                  DataFrame(result["$s"]), 
+                  writeheader=false)
+    end
+end
+
+result = Dict()
+for n_particles in [10, 20, 50, 100]
+    result["$n_particles"] = []
+    i = 0
+    @info "for n particles" n_particles
+    while i < 100
+        if n_particles == 100 && i < 90
+            i = 90
+        end
+        begin  # 2d gaussian mixture
+            # n_particles = 100
+            e = 1
+            r = 1
+            n_iter = 500
+
+            # target
+            μ₁ = [5, 3]
+            Σ₁ = [9. 0.5; 0.5 1.]  # MvNormal can deal with Int type means but not covariances
+            μ₂ = [7, 0]
+            Σ₂ = [1. 0.1; 0.1 7.]  # MvNormal can deal with Int type means but not covariances
+            target = MixtureModel(MvNormal[ MvNormal(μ₁, Σ₁), MvNormal(μ₂, Σ₂) ], [0.5, 0.5])
+            p = rand(target, n_particles)
+            tglp(x) = gradp(target, x)
+
+            # initial
+            μ = [0, 0]
+            sig = [1. 0.; 0. 1.]  # MvNormal can deal with Int type means but not covariances
+            initial = MvNormal(μ, sig)
+            q_0 = rand(initial, n_particles)
+            q = copy(q_0)
+
+            @time q, int_dKL, dKL = svgd_fit_with_int(q, tglp, n_iter=n_iter, repulsion=r, step_size=e)	
+            #= @time q = svgd_fit(q, tglp, n_iter=400, repulsion=r, step_size=e) =#	
+            Plots.plot(dKL)
+            #= plot_svgd_results(q_0, q, p) =#
+        end
+        push!(result["$n_particles"], dKL)
+        @info "step" i
+        i += 1
+    end
 end
 
 begin  # 3d gaussian
