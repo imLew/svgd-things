@@ -1,3 +1,5 @@
+module SVGD
+
 using Statistics
 using KernelFunctions
 using LinearAlgebra
@@ -154,4 +156,5 @@ function kernel_grad_matrix(kernel::KernelFunctions.Kernel, X)
 	mapslices(x -> grad.(kernel, [x], eachcol(X)), X, dims = 1)
 end
 
+end # module
 
