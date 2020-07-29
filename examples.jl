@@ -9,7 +9,8 @@ using ForwardDiff
 
 ## Sampling
 begin # util functions
-    function plot_svgd_results(q_0, q, p; title)
+
+    function plot_svgd_results(q_0, q, p; title=nothing, label=nothing)
         d = size(q)[1]
         if d == 2
             Plots.scatter([q_0[1,:] q[1,:] p[1,:]],
@@ -22,13 +23,13 @@ begin # util functions
             Plots.scatter([q_0[1,:] q[1,:] p[1,:]],[q_0[2,:] q[2,:] p[2,:]],
                           [q_0[3,:] q[3,:] p[3,:]], 
                             markercolor=["blue" "red" "green"],
-                            title=title)
+                            title=title,
+                            label=label)
         end
     end
 
     function gradp(d::Distribution, x)
         if length(x) == 1
-            #= x = x[1] =#
             return gradient(x->log(pdf.(d, x)[1]), x )[1]
         end
         ForwardDiff.gradient(x->log(pdf(d, x)), reshape(x, length(x)) )
@@ -37,12 +38,11 @@ begin # util functions
     function collect_stein_discrepancies(;particle_sizes, problem_function, dir_name, 
                                          n_samples=100)
         result = Dict()
-        particle_sizes = [10, 20, 50, 100]
         for n_particles in particle_sizes
             result["$n_particles"] = []
             i = 0
             while i<n_samples
-                q, int_dKL, dKL = problem_function(n_particles=n_particles)
+                q, q_0, p, dKL = problem_function(n_particles=n_particles)
                 push!(result["$n_particles"], dKL)
                 @info "step" n_particles, i
                 i += 1
@@ -55,7 +55,8 @@ begin # util functions
         for s in particle_sizes
             CSV.write(joinpath(dir_name,"$s"*"_particles"), 
                       DataFrame(result["$s"]), 
-                      writeheader=false)
+                      header=false,
+                      append=true)
         end
     end
 
@@ -93,28 +94,10 @@ function gaussian_1d_mixture(;n_particles=100, step_size=1, repulsion=1, n_iter=
     initial_dist = Normal(-10)
     q_0 = rand(initial_dist, (1, n_particles) )
     q = copy(q_0)
-    q, dKL = svgd_fit_with_int(q, grad_logp, n_iter=n_iter, repulsion=repulsion, step_size=step_size)	
-    return q, q_0, p, dKL
+    @time q, idkl, dkl = svgd_fit_with_int(q, tglp, n_iter=n_iter, repulsion=repulsion, step_size=step_size)	
+    q, q_0, p, dkl
 end
 
-X = gaussian_1d_mixture(n_iter=5)
-
-collect_stein_discrepancies(particle_sizes=[10, 50, 100, 200, 300], 
-                            problem_function=gaussian_2d, 
-                            dir_name="gaussian_1D_mixture", 
-                            n_samples=10)
-
-
-function plot_discrep(filename, func; n_iter=nothing, title=nothing, label=nothing)
-    file = CSV.File(filename; header=false)
-    df = DataFrame(file)
-    n_tot = length(df[1])
-    if n_iter == nothing
-        n_iter = n_tot-1
-    end
-    Plots.plot([n_tot-n_iter : n_tot...], func(df)[end-n_iter:end], title=title,
-    label=label)
-end
 
 Random.seed!(69)
 Z = gaussian_2d(n_iter=500, step_size=0.5, norm_method="standard")
@@ -140,49 +123,35 @@ function gaussian_2d(;n_particles=100, step_size=1, repulsion=1, n_iter=500,
     return q, q_0, p, dKL
 end
 
-gaussian_2d(n_particles=10, n_iter=2)
 
-result = Dict()
-for n_particles in [10, 20, 50, 100]
-    result["$n_particles"] = []
-    i = 0
-    @info "for n particles" n_particles
-    while i < 100
-        if n_particles == 100 && i < 90
-            i = 90
-        end
-        begin  # 2d gaussian mixture
-            # n_particles = 100
-            e = 1
-            r = 1
-            n_iter = 500
+begin  # 2d gaussian mixture
+    # n_particles = 100
+    e = 1
+    r = 1
+    n_iter = 500
 
-            # target
-            μ₁ = [5, 3]
-            Σ₁ = [9. 0.5; 0.5 1.]  # MvNormal can deal with Int type means but not covariances
-            μ₂ = [7, 0]
-            Σ₂ = [1. 0.1; 0.1 7.]  # MvNormal can deal with Int type means but not covariances
-            target = MixtureModel(MvNormal[ MvNormal(μ₁, Σ₁), MvNormal(μ₂, Σ₂) ], [0.5, 0.5])
-            p = rand(target, n_particles)
-            grad_logp(x) = gradp(target, x)
+    # target
+    μ₁ = [5, 3]
+    σ₁ = [9. 0.5; 0.5 1.]  # mvnormal can deal with int type means but not covariances
+    μ₂ = [7, 0]
+    σ₂ = [1. 0.1; 0.1 7.]  # mvnormal can deal with int type means but not covariances
+    target = mixturemodel(mvnormal[ mvnormal(μ₁, σ₁), mvnormal(μ₂, σ₂) ], [0.5, 0.5])
+    p = rand(target, n_particles)
+    tglp(x) = gradp(target, x)
 
-            # initial
-            μ = [0, 0]
-            sig = [1. 0.; 0. 1.]  # MvNormal can deal with Int type means but not covariances
-            initial = MvNormal(μ, sig)
-            q_0 = rand(initial, n_particles)
-            q = copy(q_0)
+    # initial
+    μ = [0, 0]
+    sig = [1. 0.; 0. 1.]  # mvnormal can deal with int type means but not covariances
+    initial = mvnormal(μ, sig)
+    q_0 = rand(initial, n_particles)
+    q = copy(q_0)
 
-            @time q, int_dKL, dKL = svgd_fit_with_int(q, grad_logp, n_iter=n_iter, repulsion=r, step_size=e)	
-            #= @time q = svgd_fit(q, grad_logp, n_iter=400, repulsion=r, step_size=e) =#	
-            Plots.plot(dKL)
-            #= plot_svgd_results(q_0, q, p) =#
-        end
-        push!(result["$n_particles"], dKL)
-        @info "step" i
-        i += 1
-    end
+    @time q, int_dkl, dkl = svgd_fit_with_int(q, tglp, n_iter=n_iter, repulsion=r, step_size=e)	
+    #= @time q = svgd_fit(q, tglp, n_iter=400, repulsion=r, step_size=e) =#	
+    plots.plot(dkl)
+    #= plot_svgd_results(q_0, q, p) =#
 end
+
 
 begin  # 3d gaussian
     n_particles = 50
