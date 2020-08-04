@@ -1,3 +1,10 @@
+using Statistics
+using KernelFunctions
+using LinearAlgebra
+using Random
+using Zygote
+using Distances
+
 using Plots
 using PyPlot
 using Distributions
@@ -30,7 +37,7 @@ begin # util functions
 
     function gradp(d::Distribution, x)
         if length(x) == 1
-            return gradient(x->log(pdf.(d, x)[1]), x )[1]
+            return Zygote.gradient(x->log(pdf.(d, x)[1]), x )[1]
         end
         ForwardDiff.gradient(x->log(pdf(d, x)), reshape(x, length(x)) )
     end
@@ -87,25 +94,43 @@ end
 
 
 function gaussian_1d_mixture(;n_particles=100, step_size=1, repulsion=1, n_iter=500,
-                                μ₁ = -2, Σ₁ = 1, μ₂ = 2, Σ₂ = 1)
+                                μ₁ = -2, Σ₁ = 1, μ₂ = 2, Σ₂ = 1,
+                               norm_method="standard")
     target = MixtureModel(Normal[ Normal(μ₁, Σ₁), Normal(μ₂, Σ₂) ], [1/3, 2/3])
     p = rand(target, n_particles)
     grad_logp(x) = gradp(target, x)
     initial_dist = Normal(-10)
     q_0 = rand(initial_dist, (1, n_particles) )
     q = copy(q_0)
-    @time q, idkl, dkl = svgd_fit_with_int(q, tglp, n_iter=n_iter, repulsion=repulsion, step_size=step_size)	
+    @time q, dkl = svgd_fit_with_int(q, grad_logp, n_iter=n_iter, repulsion=repulsion, 
+                                           step_size=step_size, norm_method=norm_method)	
     q, q_0, p, dkl
 end
 
 
-Random.seed!(69)
-Z = gaussian_2d(n_iter=500, step_size=0.5, norm_method="standard")
+function gaussian_1d(;n_particles=100, step_size=1, repulsion=1, n_iter=500,
+                                μ = -9, Σ = 0.8,
+                               norm_method="standard")
+    target =  Normal(μ, Σ)
+    p = rand(target, n_particles)
+    grad_logp(x) = gradp(target, x)
+    initial_dist = Normal()
+    q_0 = rand(initial_dist, (1, n_particles) )
+    q = copy(q_0)
+    @time q, dkl = svgd_fit_with_int(q, grad_logp, n_iter=n_iter, repulsion=repulsion, 
+                                           step_size=step_size, norm_method=norm_method)	
+    q, q_0, p, dkl
+end
 
-Random.seed!(69)
-X = gaussian_2d(n_iter=500, step_size=0.5, norm_method="unbiased")
 
-Plots.plot(X[4])
+q, q_0, p, rkhs_norm = gaussian_1d(n_particles = 20, n_iter=300, norm_method="RKHS_norm")
+q, q_0, p, biased = gaussian_1d(n_particles = 20, n_iter=300, norm_method="standard")
+q, q_0, p, unbiased = gaussian_1d(n_particles = 20, n_iter=300, norm_method="unbiased")
+
+Plots.plot(rkhs_norm)
+Plots.plot(biased)
+Plots.plot(unbiased)
+
 
 function gaussian_2d(;n_particles=100, step_size=1, repulsion=1, n_iter=500,
                      μ_target=[-2, 8], Σ_target=[9. 0.5; 0.5 1.],
@@ -125,7 +150,6 @@ end
 
 
 begin  # 2d gaussian mixture
-    # n_particles = 100
     e = 1
     r = 1
     n_iter = 500
@@ -149,7 +173,6 @@ begin  # 2d gaussian mixture
     @time q, int_dkl, dkl = svgd_fit_with_int(q, tglp, n_iter=n_iter, repulsion=r, step_size=e)	
     #= @time q = svgd_fit(q, tglp, n_iter=400, repulsion=r, step_size=e) =#	
     plots.plot(dkl)
-    #= plot_svgd_results(q_0, q, p) =#
 end
 
 
