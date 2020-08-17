@@ -1,5 +1,5 @@
 execute "edit main.tex"
-execute "tabe referencex.bib"
+execute "tabe references.bib"
 execute "tabNext"
 VimtexCompile
 
