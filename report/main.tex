@@ -49,38 +49,38 @@
             \left[ 
                 \text{trace} ( A_p \phi(x) ) 
             \right]^2
-            \ | \ ||\phi|| \leq 1 
+            \ | \ \|\phi\| \leq 1 
         \right\}
     \end{equation}
 
     The maximising $\phi$ for the Stein discrepancy can found analytically if $\mathcal{H}$ is a RKHS. It is given by
-    \begin{equation}
+    \begin{align}
         \label{eq:phi_max}
-        \phi_{ q, p } (x) = \mathbb{E}_{ y \sim q } \left[ \mathcal{A}_p k(x, y) \right]
-    \end{equation}
-    where $k(x,y)$ is the reproducing kernel.
-    The central theorem of SVGD is
+        \phi^* &= \frac{ \phi_{ q, p }} {\|\phi_{ q, p }\| } \\
+        \phi_{ q, p } (x) &= \mathbb{E}_{ y \sim q } \left[ \mathcal{A}_p k(x, y) \right]
+    \end{align}
+    where $k(x,y)$ is the reproducing kernel and $\|\phi_{ q, p }\|^2  = \mathbb{D}(q,p)$.\\
+    The central theorem of SVGD states that
     \begin{equation}
         \label{eq:svgd}
         \frac{d}{dt}\ KL( q^t \| p ) = - \mathbb{E} \left[ \text{trace} \left( \mathcal{A}_p \phi(x) \right) \right]
     \end{equation}
-    All the above is from \cite{svgd}
-
+    All the above is from % \cite{svgd}
 
 \section{Thermodynamic Integration and SVGD}
     Opper reasoned this should work for SVGD by analogy to the following, which I think is a more standard gradient
     flow transportation. Assume that we have a time derivative of the KL divergence that can be written as a gradient.
     \begin{equation}
-        \frac{d}{dt}\ KL( q^t \| p ) = - \nabla F_t.
+        \frac{d}{dt}\ KL( q^t \| p ) = - F_t.
     \end{equation}
-    Where $q(x)$ is a variational distribution trying to approximate $p(x)$ the true posterior distributions
+    Where $q(x)$ is a variational distribution approximating $p(x)$, the true posterior distribution.
     Assuming that this converges in the sense that the final distribution $q^{\infty}$ has 0 KL divergence with 
     $p(x)$ we can write
     \begin{align}
     \label{eq:therm_int}
     0 &= \text{KL}( q^{\infty} \| p ) \\
-    &= \text{KL} ( q^0 \| p ) - \int_0^{\infty} \frac{d}{dt} \text{KL} ( q^t \| p ) dt \\
-    &= \text{KL}( q^0 \| p ) + \int_0^{\infty} \nabla F_t dt
+    &= \text{KL} ( q^0 \| p ) + \int_0^{\infty} \frac{d}{dt} \text{KL} ( q^t \| p ) dt \\
+    &= \text{KL}( q^0 \| p ) - \int_0^{\infty} F_t dt
     \end{align}
 
     The second ingredient to finding $\log Z$ from this is the assumption that $p(x) = \frac{ e^{-V(x)} }{ Z }$, 
@@ -101,15 +101,17 @@
     This gives us $\log Z$ as :
     \begin{align}
     \label{eq:log_z}
-        \log Z = - \int_X q^t(x) [\log q^t(x) dx +  V(x)] dx 
-            - \int_0^\infty \nabla F_t dt
+    \log Z &= - \int_X q^0(x) [\log q^0(x) dx +  V(x)] dx 
+            + \int_0^\infty F_t dt \\
+           &= -H[q^0] - \mathbb{E}_{q^0}[V(x)] +\int_0^\infty F_t dt 
     \end{align}
+    Where $H[q]$ denotes the entropy of $q$.
 
 
     \newpage
 
 \subsection{Computing Thermodynamic integration}
-\subsubsection{Estimating the Gradient for SVGD}
+\subsubsection{Estimating the Gradient for SVGD using Kernelized Stein Discrepancy}
     The time derivative of the KL divergence is not a true gradient nonetheless we should be able to use
     (\ref{eq:svgd}) in combination with (\ref{eq:phi_max}) to approximate the second term in (\ref{eq:log_z}).
     Combining the two the derivate of the KL divergence, expressed in terms of the kernel of the RKHS, is:
@@ -161,13 +163,72 @@
     %         k(x_i,x_j) \Big)\Bigg)
     % \end{align}
 
+\subsubsection{Estimating the Gradient using RKHS norm}
+This sections assumes a 1-Dimensional problem, i.e. $\phi$ is a function $\mathbb{R} \to \mathbb{R}$.
+Choosing $\phi$ in (\ref{eq:svgd}) to minimize the right hand side is equivalent to
+choosing it such that it maximizes the Stein discrepancy (\ref{eq:stein_discrepancy}),
+therefore
+\begin{align}
+    % \label{eq:svgd}
+    \frac{d}{dt}\ KL( q^t \| p ) &= 
+    - \mathbb{E} \left[ \text{trace} \left( \mathcal{A}_p \phi(x) \right) \right] \\
+                             &= - \mathbb{D}(q^t, p )\\
+                             &= - \|\phi_{ q^t, p }\|^2  .
+\end{align}
+
+Using the fact that $\phi$ lies in the RKHS spanned by $k$ (and probably the representer theorem) 
+we know that
+
+\begin{align}
+    \phi(x) &= \sum_{i=1}^{n} \alpha_i k(x, x_i) \\
+            &\textrm{and therefore}\\
+    \| \phi \| ^2 &= \sum_{i,j=1}^{n} \alpha_i k(x_i, x_j) \alpha_j
+\end{align}
+where $\{x_i\}$ are the SVGD particles.
+Let $\alpha$ denote the vector $(\alpha_i)$, these coefficients are unknown but
+letting $\phi$ denote the vector $(\phi(x_i))$ and $K$ the matrix
+$(k(x_i, x_j))$, they can be found by inverting $K$, i.e.
+\begin{equation}
+    \alpha = K^{-1} \phi
+\end{equation}
+The RKHS norm of $\phi$ can then be found as 
+\begin{equation}
+    \| \phi \| ^2 = \phi^{\top} K^{-1} \phi = \sum_{i,j=1}^{n} \phi(x_i) K^{-1}_{ij} \phi(x_j)
+\end{equation}
+
 \subsection{Experiments}
-    Possible targets to try it on:
-    \begin{itemize}
-        \item Gaussians
-        \item neural net
-        \item augmented regression (i.e. with polynomial regressors)
-    \end{itemize}
+    % Possible targets to try it on:
+    % \begin{itemize}
+    %     \item Gaussians
+    %     \item neural net
+    %     \item augmented regression (i.e. with polynomial regressors)
+    % \end{itemize}
+
+\subsubsection{Gaussian}
+For normal distributions $V(x) = (x - \mu)^{\top} \Sigma^{-1}(x - \mu)$ and 
+$Z = (2\pi)^{\frac{d}{2}} \sqrt{|\Sigma|}$ making them as easy first
+test-case for the algorithm. \\
+The values for the entropy and $\mathbb{E}[V(x)]$ are
+
+\begin{equation}
+    H[q] = \frac{d}{2} + \frac{d}{2} \log 2\pi + \frac{1}{2} \log |\Sigma|
+\end{equation}
+
+and
+
+\begin{align}
+    \mathbb{E}[V(x)] &= \mathbb{E}[  (x - \mu)^{\top} \Sigma^{-1}(x - \mu) ] \\
+         &= \mathbb{E}[ x^{\top} \Sigma^{-1} x ] - \mu^{\top} \Sigma^{-1} \mu
+\end{align}
+Inserting the values for the standard normal in 1 dimension,
+$Z=\sqrt{2\pi}$ and  $V(x)=x^2$, into (\ref{eq:log_z}) we can calculate the value
+that the integral of $F_t$ should take as
+\begin{align}
+    -\frac{1}{2} \log 2\pi &= -\frac{1}{2} - \frac{1}{2}\log 2\pi  - 1 + \int_0^\infty F_t dt \\
+    \frac{1}{2} \log 2\pi &= \frac{1}{2} + \frac{1}{2}\log 2\pi  + 1 - \int_0^\infty F_t dt \\
+    \int_0^\infty F_t dt &= \frac{3}{2} 
+\end{align}
+
 
 
 \section{Appendix}
