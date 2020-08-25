@@ -16,7 +16,6 @@ using ForwardDiff
 
 ## Sampling
 begin # util functions
-
     function plot_svgd_results(q_0, q, p; title=nothing, label=nothing)
         d = size(q)[1]
         if d == 2
@@ -26,8 +25,7 @@ begin # util functions
                           label=["q_0" "q" "p"], 
                           legend = :outerleft,
                           title=title)
-        elseif d == 3
-            Plots.scatter([q_0[1,:] q[1,:] p[1,:]],[q_0[2,:] q[2,:] p[2,:]],
+        elseif d == 3 Plots.scatter([q_0[1,:] q[1,:] p[1,:]],[q_0[2,:] q[2,:] p[2,:]],
                           [q_0[3,:] q[3,:] p[3,:]], 
                             markercolor=["blue" "red" "green"],
                             title=title,
@@ -85,7 +83,7 @@ begin # util functions
             d = size(μ)[1]
         end
         if d > 1
-            1/ sqrt((2π)^d * LinearAlgebra.det(Σ)) * exp( -1/2 * (x - μ)' * (Σ \ (x - μ)) )
+            1/ sqrt((2π)^d * LinearAlgebra.det(Σ)) * exp( -1/2 * (x - μ) * (Σ \ (x - μ)))
         else
             (sqrt(2π)*Σ) \ exp(-(x-μ)^2/Σ^2)
         end
@@ -109,8 +107,7 @@ end
 
 
 function gaussian_1d(;n_particles=100, step_size=1, repulsion=1, n_iter=500,
-                                μ = -9, Σ = 0.8,
-                               norm_method="standard")
+                    μ = -9, Σ = 0.8, norm_method="standard", kernel_width=nothing)
     target =  Normal(μ, Σ)
     p = rand(target, n_particles)
     grad_logp(x) = gradp(target, x)
@@ -118,18 +115,36 @@ function gaussian_1d(;n_particles=100, step_size=1, repulsion=1, n_iter=500,
     q_0 = rand(initial_dist, (1, n_particles) )
     q = copy(q_0)
     @time q, dkl = svgd_fit_with_int(q, grad_logp, n_iter=n_iter, repulsion=repulsion, 
-                                           step_size=step_size, norm_method=norm_method)	
+                                     step_size=step_size, norm_method=norm_method,
+                                    kernel_width=kernel_width)	
     q, q_0, p, dkl
 end
 
+gaussian_1d()
 
-q, q_0, p, rkhs_norm = gaussian_1d(n_particles = 20, n_iter=300, norm_method="RKHS_norm")
-q, q_0, p, biased = gaussian_1d(n_particles = 20, n_iter=300, norm_method="standard")
-q, q_0, p, unbiased = gaussian_1d(n_particles = 20, n_iter=300, norm_method="unbiased")
+function run_and_plot(; n_particles, n_iter, kernel_width, step_size=0.05,
+                      problem=gaussian_1d, norm_method="RKHS_norm")
 
-Plots.plot(rkhs_norm)
-Plots.plot(biased)
-Plots.plot(unbiased)
+    q, q_0, p, rkhs_norm = problem(n_particles=n_particles, n_iter=n_iter, 
+                norm_method=norm_method, kernel_width=kernel_width, step_size=step_size)
+
+    layout = @layout [t{0.1h} ; a b]
+
+    title="$n_particles particles; $n_iter iterations; kernel_width $kernel_width"
+
+    title_plot = plot(grid=false,annotation=(0.5,0.5,title),ticks=([]),fgborder=:white,subplot=1, framestyle=:none)
+
+    norm_plot = plot(rkhs_norm, labels="RKHS norm");
+
+    distributions = histogram([reshape(q_0, length(q_0)) reshape(q, length(q)) p], fillalpha=0.3, labels=["q_0" "q" "p"]);
+
+    display( plot(title_plot, norm_plot, distributions, layout=layout, size=(1400,800)))
+    if occursin(".", title)
+        title = join(split(title, "."), "point")
+    end
+    savefig("plots/$(join(split(title)))")
+q, q_0, p, rkhs_norm
+end
 
 
 function gaussian_2d(;n_particles=100, step_size=1, repulsion=1, n_iter=500,
