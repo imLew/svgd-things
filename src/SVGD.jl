@@ -64,8 +64,7 @@ function svgd_step_with_int(q, kernel::KernelFunctions.Kernel, grad_logp,
 end
 
 function calculate_phi(kernel, q, grad_logp)
-    n = size(q)[end]
-    ϕ = zeros(1, n)
+    ϕ = zero(q)
     for (i, xi) in enumerate( eachcol(q) )
         for xj in eachcol(q)
             d = kernel(xj, xi) * grad_logp(xj)
