@@ -69,7 +69,7 @@ function calculate_phi(kernel, q, grad_logp)
     for (i, xi) in enumerate( eachcol(q) )
         for xj in eachcol(q)
             d = kernel(xj, xi) * grad_logp(xj)
-            ϕ[1, i] += d[1] + gradient( x->kernel(xj, x), xi)[1][1]
+            ϕ[:, i] += d + gradient( x->kernel(xj, x), xi)
         end
     end
     ϕ /= n
