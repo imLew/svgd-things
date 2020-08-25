@@ -66,13 +66,14 @@ end
 function calculate_phi(kernel, q, grad_logp)
     n = size(q)[end]
     ϕ = zeros(1, n)
+    glp = grad_logp.(q)
     for (i, xi) in enumerate( eachcol(q) )
-        for xj in eachcol(q)
-            d = kernel(xj, xi) * grad_logp(xj)
+        for (j, xj) in enumerate( eachcol(q) )
+            d = kernel(xj, xi) * glp[j]
             ϕ[1, i] += d[1] + gradient( x->kernel(xj, x), xi)[1][1]
         end
     end
-    ϕ /= n
+    ϕ ./= n
 end
 
 function calculate_phi_vectorized(kernel, q, grad_logp)
