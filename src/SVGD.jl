@@ -2,7 +2,6 @@ module SVGD
 
 export svgd_fit_with_int
 export median_trick
-export kernelmatrix
 export kernel_grad_matrix
 export empirical_RKHS_norm
 export compute_phi_norm
@@ -17,6 +16,7 @@ using LinearAlgebra
 using Random
 using Zygote
 using Distances
+using PDMats
 
 
 function median_trick(x)
@@ -30,17 +30,24 @@ end
 grad(f,x,y) = gradient(f,x,y)[1]
 
 function svgd_fit_with_int(q, grad_logp ;n_iter=100, repulsion=1, step_size=1,
-                          norm_method="standard")
+                          norm_method="standard", kernel_width=nothing)
     i = 0
     dKL_steps = []
-    kernel = TransformedKernel( 
-                SqExponentialKernel(), 
-                ScaleTransform( 1/sqrt( median_trick(q) ) )
-               )
+    if kernel_width isa Number
+        kernel = TransformedKernel( 
+                    SqExponentialKernel(), 
+                    ScaleTransform(1/sqrt(kernel_width))
+                   )
+    else
+        kernel = TransformedKernel( 
+                    SqExponentialKernel(), 
+                    ScaleTransform( 1/sqrt( median_trick(q) ) )
+                   )
+    end
     while i < n_iter
         @info "Step" i 
         i += 1
-        #= kernel.transform.s .= 1/sqrt(median_trick(q)) =#
+        # kernel.transform.s .= 1/sqrt(median_trick(q))
         q, dKL = svgd_step_with_int(q, kernel, grad_logp, step_size, repulsion, norm_method=norm_method)
         push!(dKL_steps, dKL)
         # Plots.display(plot_svgd_results(q_0, q, p, title="$i"))
@@ -51,18 +58,19 @@ end
 function svgd_step_with_int(q, kernel::KernelFunctions.Kernel, grad_logp, 
                             step_size, repulsion; norm_method="standard")
     n = size(q)[end]
-    k_mat = kernelmatrix(kernel, q)
+    k_mat = KernelFunctions.kernelmatrix(kernel, q)
     grad_k = kernel_grad_matrix(kernel, q)
     glp_mat = hcat( grad_logp.(eachcol(q))... )
     if n == 1  #  no repulsion in case of one particle
-        ϕ = step_size/n * glp_mat * k_mat 
+        ϕ = 1/n * glp_mat * k_mat 
     else
-        ϕ =  step_size/n * ( glp_mat * k_mat 
+        ϕ =  1/n * ( glp_mat * k_mat 
                     + repulsion * hcat( sum(grad_k, dims=2)... ) 
                    )
     end
-    q += ϕ
     @time dKL = compute_phi_norm(q, kernel, grad_logp, norm_method=norm_method, ϕ=ϕ)
+    ϕ *= step_size 
+    q += ϕ
     return q, dKL
 end
 
@@ -79,8 +87,20 @@ function compute_phi_norm(q, kernel, grad_logp; norm_method="standard", ϕ=nothi
 end
 
 function empirical_RKHS_norm(kernel::Kernel, q, ϕ)
-    k_mat = kernelmatrix(kernel, q)
-    x = ϕ * inv(k_mat) * ϕ'
+    # local x
+    k_mat = kernelpdmat(kernel, q)
+    # try 
+        # k_mat = PDMat(k_mat)
+    x = invquad(k_mat, reshape(ϕ, length(ϕ)))
+    # catch e
+    #     if isa(e, PosDefException)
+    #         println("Kernel matrix not positive definite!")
+    #         # @info "kmat" k_mat
+    #         x = ϕ * inv(k_mat) * ϕ'
+    #     else
+    #         rethrow()
+    #     end
+    # end
     x[1]  # otherwise it's an array of array instead of array of floats
 end
 
@@ -126,10 +146,6 @@ end
 #=     gradient(x->kernel(x,y), x) =#
 #= end =#
 
-function kernelmatrix(kernel, q)
-    mapslices( x-> kernel.([x], eachcol(q)), q, dims=1 )
-end
-
 function kernel_grad_matrix(kernel::KernelFunctions.Kernel, q)
     if size(q)[end] == 1
         return 0
@@ -138,4 +154,3 @@ function kernel_grad_matrix(kernel::KernelFunctions.Kernel, q)
 end
 
 end # module
-
