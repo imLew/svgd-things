@@ -57,6 +57,25 @@ end
 
 function svgd_step_with_int(q, kernel::KernelFunctions.Kernel, grad_logp, 
                             step_size; norm_method="standard")
+    @time ϕ = calculate_phi(kernel, q, grad_logp)
+    @time dKL = compute_phi_norm(q, kernel, grad_logp, norm_method=norm_method, ϕ=ϕ)
+    q .+= step_size*ϕ
+    return q, dKL
+end
+
+function calculate_phi(kernel, q, grad_logp)
+    n = size(q)[end]
+    ϕ = zeros(1, n)
+    for (i, xi) in enumerate( eachcol(q) )
+        for xj in eachcol(q)
+            d = kernel(xj, xi) * grad_logp(xj)
+            ϕ[1, i] += d[1] + gradient( x->kernel(xj, x), xi)[1][1]
+        end
+    end
+    ϕ /= n
+end
+
+function calculate_phi_vectorized(kernel, q, grad_logp)
     n = size(q)[end]
     k_mat = KernelFunctions.kernelmatrix(kernel, q)
     grad_k = kernel_grad_matrix(kernel, q)
@@ -68,12 +87,7 @@ function svgd_step_with_int(q, kernel::KernelFunctions.Kernel, grad_logp,
                     + hcat( sum(grad_k, dims=2)... ) 
                    )
     end
-    @time dKL = compute_phi_norm(q, kernel, grad_logp, norm_method=norm_method, ϕ=ϕ)
-    q .+= step_size*ϕ
-    return q, dKL
 end
-
-function calculate_phi_vectorized(kernel, q, grad_logp)
 
 function compute_phi_norm(q, kernel, grad_logp; norm_method="standard", ϕ=nothing)
     if norm_method == "standard"
