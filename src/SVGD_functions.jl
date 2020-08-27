@@ -53,8 +53,8 @@ function svgd_fit_with_int(q, grad_logp ;n_iter=100, step_size=1,
         elseif kernel_width == "median"
             kernel.transform.s .= 1/median(pairwise(Euclidean(), q, dims=2))
         end
-        @time ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
-        # @time ϕ = calculate_phi(kernel, q, grad_logp)
+        # @time ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
+        @time ϕ = calculate_phi(kernel, q, grad_logp)
         @time dKL = compute_phi_norm(q, kernel, grad_logp, norm_method=norm_method, ϕ=ϕ)
         q .+= step_size*ϕ
         push!(dKL_steps, dKL)
@@ -69,21 +69,13 @@ function plot_iteration(q_0, q, i)
     Plots.display(plot_svgd_results(q_0, q, nothing, title="$i"))
 end
 
-# function svgd_step_with_int(q, kernel::KernelFunctions.Kernel, grad_logp, 
-                            # step_size; norm_method="standard")
-    # @time ϕ = calculate_phi(kernel, q, grad_logp)
-    # @time dKL = compute_phi_norm(q, kernel, grad_logp, norm_method=norm_method, ϕ=ϕ)
-    # q .+= step_size*ϕ
-    # return q, dKL
-# end
-
 function calculate_phi(kernel, q, grad_logp)
     glp = grad_logp.(eachcol(q))
     ϕ = zero(q)
     for (i, xi) in enumerate( eachcol(q) )
         for (j, xj) in enumerate( eachcol(q) )
             d = kernel(xj, xi) * glp[j]
-            K = gradient( x->kernel(xi, x), xj )[1]
+            K = gradient( x->kernel(x, xi), xj )[1]
             ϕ[:, i] .+= d .+ K 
         end
     end
@@ -118,8 +110,7 @@ end
 
 function empirical_RKHS_norm(kernel::Kernel, q, ϕ)
     k_mat = kernelpdmat(kernel, q)
-    x = invquad(k_mat, reshape(ϕ, length(ϕ)))
-    x[1]  # otherwise it's an array of array instead of array of floats
+    invquad(k_mat, reshape(ϕ, length(ϕ)))
 end
 
 function unbiased_stein_discrep(q, kernel, grad_logp)

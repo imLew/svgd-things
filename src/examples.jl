@@ -2,6 +2,29 @@ using Distributions
 
 ## Sampling
 
+function gaussian_1d(;
+                    n_particles=100,
+                    step_size=1,
+                    n_iter=500,
+                    μ_initial = 0,
+                    Σ_initial = 1,
+                    μ_target = -9,
+                    Σ_target = 0.8,
+                    norm_method="standard",
+                    kernel_width=nothing
+                   )
+    target =  Normal(μ_initial, Σ_initial)
+    p = rand(target, n_particles)
+    grad_logp(x) = gradp(target, x)
+    initial_dist = Normal(μ_target, Σ_target)
+    q_0 = rand(initial_dist, (1, n_particles) )
+    q = copy(q_0)
+    @time q, dkl = svgd_fit_with_int(q, grad_logp, n_iter=n_iter, 
+                                     step_size=step_size, norm_method=norm_method,
+                                    kernel_width=kernel_width)	
+    q, q_0, p, dkl
+end
+
 function gaussian_1d_mixture(;n_particles=100, step_size=1, n_iter=500,
                                 μ₁ = -2, Σ₁ = 1, μ₂ = 2, Σ₂ = 1,
                                norm_method="standard")
@@ -13,20 +36,6 @@ function gaussian_1d_mixture(;n_particles=100, step_size=1, n_iter=500,
     q = copy(q_0)
     @time q, dkl = svgd_fit_with_int(q, grad_logp, n_iter=n_iter, 
                                            step_size=step_size, norm_method=norm_method)	
-    q, q_0, p, dkl
-end
-
-function gaussian_1d(;n_particles=100, step_size=1, n_iter=500,
-                    μ = -9, Σ = 0.8, norm_method="standard", kernel_width=nothing)
-    target =  Normal()
-    p = rand(target, n_particles)
-    grad_logp(x) = gradp(target, x)
-    initial_dist = Normal(μ, Σ)
-    q_0 = rand(initial_dist, (1, n_particles) )
-    q = copy(q_0)
-    @time q, dkl = svgd_fit_with_int(q, grad_logp, n_iter=n_iter, 
-                                     step_size=step_size, norm_method=norm_method,
-                                    kernel_width=kernel_width)	
     q, q_0, p, dkl
 end
 
