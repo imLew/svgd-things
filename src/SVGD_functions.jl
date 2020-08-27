@@ -72,9 +72,9 @@ end
 function calculate_phi(kernel, q, grad_logp)
     glp = grad_logp.(eachcol(q))
     ϕ = zero(q)
-    for (i, xi) in enumerate( eachcol(q) )
-        for (j, xj) in enumerate( eachcol(q) )
-            d = kernel(xj, xi) * glp[j]
+    for (i, xi) in enumerate(eachcol(q))
+        for (xj, glp_j) in zip(eachcol(q), glp)
+            d = kernel(xj, xi) * glp_j
             K = gradient( x->kernel(x, xi), xj )[1]
             ϕ[:, i] .+= d .+ K 
         end
