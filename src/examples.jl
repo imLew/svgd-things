@@ -7,9 +7,9 @@ function gaussian_1d(;
                     step_size=1,
                     n_iter=500,
                     μ_initial = 0,
-                    Σ_initial = 1,
-                    μ_target = -9,
-                    Σ_target = 0.8,
+                    Σ_initial = 0.5,
+                    μ_target = 0,
+                    Σ_target = 1,
                     norm_method="standard",
                     kernel_width=nothing
                    )
