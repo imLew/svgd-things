@@ -1,4 +1,40 @@
 using Distributions
+using LinearAlgebra
+using PDMats
+
+export gaussian_logZ
+export gaussian_1d
+export estimate_logZ
+export expectation_V_gaussian
+export gaussian_entropy
+
+function gaussian_entropy(μ, Σ)
+    if Σ isa Number
+        return 0.5 * ( log(2π) + log(Σ) + 1 )
+    end
+    d = size(Σ)[1]
+    0.5 * ( d * log(2π) + log( det(Σ) ) + d )
+end
+
+function expectation_V_gaussian(μ₀, μₚ, Σ₀, Σₚ)
+    if Σ₀ isa Number
+        return 0.5 * ( ( Σ₀ / Σₚ ) -  (μ₀-μₚ)^2/Σₚ  )
+    end
+    Σ₀ = get_pdmat(Σ₀)
+    Σₚ = get_pdmat(Σₚ)
+    0.5 * ( ( det(Σ₀) * tr( inv(Σₚ) ) ) -  invquad(Σₚ, μ₀-μₚ) )
+end
+
+function estimate_logZ(H0, EV, int_KL)
+    -H0 - EV + int_KL
+end
+
+function gaussian_logZ(μ, Σ)
+    if Σ isa Number
+        return logpdf( Normal(μ, Σ), μ)
+    end
+    logpdf( MvNormal(μ, Σ), μ)
+end
 
 ## Sampling
 
@@ -13,10 +49,10 @@ function gaussian_1d(;
                     norm_method="standard",
                     kernel_width=nothing
                    )
-    target =  Normal(μ_initial, Σ_initial)
+    target =  Normal(μ_initial, sqrt( Σ_initial ))
     p = rand(target, n_particles)
     grad_logp(x) = gradp(target, x)
-    initial_dist = Normal(μ_target, Σ_target)
+    initial_dist = Normal(μ_target, sqrt(Σ_target))
     q_0 = rand(initial_dist, (1, n_particles) )
     q = copy(q_0)
     @time q, dkl = svgd_fit_with_int(q, grad_logp, n_iter=n_iter, 
@@ -112,7 +148,6 @@ function gaussian3d_mixture()
 end
 
 ## model fitting
-
 # TODO: fix this function
 function regression2d() 
     n_samples = 100
