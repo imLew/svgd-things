@@ -1,3 +1,6 @@
+\newcommand{\trace}{\textrm{trace}}
+\newcommand{\KL}{\textrm{KL}}
+\newcommand{\pdf}{\textrm{pdf}}
 \newcommand{\bvec}[1]{\boldsymbol{#1}}
 \newcommand\blfootnote[1]{%
   \begingroup
@@ -63,31 +66,31 @@
     The central theorem of SVGD states that
     \begin{equation}
         \label{eq:svgd}
-        \frac{d}{dt}\ KL( q^t \| p ) = - \mathbb{E} \left[ \text{trace} \left( \mathcal{A}_p \phi(x) \right) \right]
+        \frac{d}{dt} \KL( q^t \| p ) = - \mathbb{E} \left[ \text{trace} \left( \mathcal{A}_p \phi(x) \right) \right]
     \end{equation}
     All the above is from % \cite{svgd}
 
 \section{Thermodynamic Integration and SVGD}
     Opper reasoned this should work for SVGD by analogy to the following, which I think is a more standard gradient
-    flow transportation. Assume that we have a time derivative of the KL divergence that can be written as a gradient.
+    flow transportation. Assume that we have a time derivative of the \KL divergence that can be written as a gradient.
     \begin{equation}
-        \frac{d}{dt}\ KL( q^t \| p ) = - F_t.
+        \frac{d}{dt}\ \KL( q^t \| p ) = - F_t.
     \end{equation}
     Where $q(x)$ is a variational distribution approximating $p(x)$, the true posterior distribution.
-    Assuming that this converges in the sense that the final distribution $q^{\infty}$ has 0 KL divergence with 
+    Assuming that this converges in the sense that the final distribution $q^{\infty}$ has 0 \KL divergence with 
     $p(x)$ we can write
     \begin{align}
     \label{eq:therm_int}
-    0 &= \text{KL}( q^{\infty} \| p ) \\
-    &= \text{KL} ( q^0 \| p ) + \int_0^{\infty} \frac{d}{dt} \text{KL} ( q^t \| p ) dt \\
-    &= \text{KL}( q^0 \| p ) - \int_0^{\infty} F_t dt
+    0 &= \text{\KL}( q^{\infty} \| p ) \\
+    &= \text{\KL} ( q^0 \| p ) + \int_0^{\infty} \frac{d}{dt} \text{\KL} ( q^t \| p ) dt \\
+    &= \text{\KL}( q^0 \| p ) - \int_0^{\infty} F_t dt
     \end{align}
 
     The second ingredient to finding $\log Z$ from this is the assumption that $p(x) = \frac{ e^{-V(x)} }{ Z }$, 
     where $Z = \int e^{-V(x)} dx$ is the evidence. In this case we can write
     \begin{align}
     \label{eq:gibbs_kl}
-        \text{KL}( q^t \| p ) &= \int_X q^t(x) \log \frac{ q^t(x) }{ p(x) } dx \\
+        \text{\KL}( q^t \| p ) &= \int_X q^t(x) \log \frac{ q^t(x) }{ p(x) } dx \\
                         &= \int_X q^t(x) \log q^t(x) - q^t(x) \log \frac{ e^{-V(x)} }{ Z } dx \\
                         &= \int_X q^t(x) \log q^t(x) dx + \int_X q^t(x) V(x) dx + \log Z \int_X q^t(x) dx \\
                         &= \int_X q^t(x) \log q^t(x) dx + \int_X q^t(x) V(x) dx + \log Z
@@ -112,12 +115,12 @@
 
 \subsection{Computing Thermodynamic integration}
 \subsubsection{Estimating the Gradient for SVGD using Kernelized Stein Discrepancy}
-    The time derivative of the KL divergence is not a true gradient nonetheless we should be able to use
+    The time derivative of the \KL divergence is not a true gradient nonetheless we should be able to use
     (\ref{eq:svgd}) in combination with (\ref{eq:phi_max}) to approximate the second term in (\ref{eq:log_z}).
-    Combining the two the derivate of the KL divergence, expressed in terms of the kernel of the RKHS, is:
+    Combining the two the derivate of the \KL divergence, expressed in terms of the kernel of the RKHS, is:
     \begin{align}
         \label{eq:F_approximation}
-        \frac{d}{dt}\ KL( q^t \| p ) = -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla_{x_i} \log p(x_i)^\top \nabla_{x_j} \log p(x_j)  \\ 
+        \frac{d}{dt}\ \KL( q^t \| p ) = -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla_{x_i} \log p(x_i)^\top \nabla_{x_j} \log p(x_j)  \\ 
         -& \frac{1}{n}\sum_{x_i,x_j}^n  \nabla_{x_i} k(x_i,x_j)^\top \nabla_{x_j} \log p(x_j)  \\ 
         -& \frac{1}{n}\sum_{x_i,x_j}^n  \nabla_{x_j} k(x_i,x_j)^\top \nabla_{x_i} \log p(x_i)  \\ 
         -& \frac{1}{n}\sum_{x_i,x_j}^n \left( \sum_k \frac{ \partial^2 }{ \partial (x_i)_k \partial (x_j)_k } 
@@ -125,13 +128,14 @@
     \end{align}
 
     When using an RBF kernel we can use the additional simplifications (see Appendix) reducing the approximation to
+    \small
+    \begin{equation}
+        \frac{dKL}{dt}( q^t \| p ) \approx \frac{-1}{n^2}\sum_{x_i,x_j}^n  
+            k(x_i,x_j) \left( \nabla_{x_i} \log p(x_i)^\top \nabla_{x_j} \log p(x_j)  
+                + \frac{2d}{h} - \frac{4}{h^2} \|x_i - x_j\|^2 \right)
+    \end{equation} 
+    \normalsize
 
-    \begin{align}
-        \frac{d}{dt}\ KL( q^t \| p ) \approx -& \frac{1}{n^2}\sum_{x_i,x_j}^n  \Bigg[
-            k(x_i,x_j) \Bigg( \nabla_{x_i} \log p(x_i)^\top \nabla_{x_j} \log p(x_j)  
-            + \frac{2}{h}\Big( d - \frac{2}{h} \|x_i - x_j\|^2 \Big) \Bigg)
-        \Bigg]
-    \end{align} 
     % In order to simplify the implementation/optimize it we can rewrite this as
     % % In order to simplify the implementation we can write this in terms of matrix multiplications,
     % % let 
@@ -170,7 +174,7 @@ choosing it such that it maximizes the Stein discrepancy (\ref{eq:stein_discrepa
 therefore
 \begin{align}
     % \label{eq:svgd}
-    \frac{d}{dt}\ KL( q^t \| p ) &= 
+    \frac{d}{dt}\ \KL( q^t \| p ) &= 
     - \mathbb{E} \left[ \text{trace} \left( \mathcal{A}_p \phi(x) \right) \right] \\
                              &= - \mathbb{D}(q^t, p )\\
                              &= - \|\phi_{ q^t, p }\|^2  .
@@ -205,39 +209,33 @@ The RKHS norm of $\phi$ can then be found as
     % \end{itemize}
 
 \subsubsection{Gaussian}
-For normal distributions $V(x) = (x - \mu)^{\top} \Sigma^{-1}(x - \mu)$ and 
-$Z = (2\pi)^{\frac{d}{2}} \sqrt{|\Sigma|}$ making them as easy first
-test-case for the algorithm. \\
-The values for the entropy and $\mathbb{E}[V(x)]$ are
+For normal distributions $V(x) = \frac{1}{2}(x - \mu)^{\top} \Sigma^{-1}(x - \mu)$ and 
+$Z = |2\pi \Sigma|^{\frac{1}{2}}$ making them as easy first
+test-case for the algorithm. 
 
-\begin{equation}
-    H[q] = \frac{d}{2} + \frac{d}{2} \log 2\pi + \frac{1}{2} \log |\Sigma|
-\end{equation}
+\begin{gather}
+\log Z = -H[q^0] - \mathbb{E}_{q^0}[V(x)] +\int_0^\infty F_t dt \\
+       = - \frac{1}{2}\log 2\pi - \frac{1}{2}\log |\Sigma_0| 
+       - \frac{d}{2} - \frac{1}{2} |\Sigma_0| \trace( \Sigma_p^{-1} ) \\
+       - \frac{1}{2} (\mu_0 - \mu_p)^{\top} \Sigma_p^{-1} (\mu_0 - \mu_p) + \int_0^\infty F_t dt 
+\end{gather}
 
-and
+% Taking for $p$ the standard normal in 1 dimension, and starting with
+% $Z=\sqrt{2\pi}$, into this equation we can calculate the value
+% that the integral of $F_t$ should take:
 
-\begin{align}
-    \mathbb{E}[V(x)] &= \mathbb{E}[  (x - \mu)^{\top} \Sigma^{-1}(x - \mu) ] \\
-         &= \mathbb{E}[ x^{\top} \Sigma^{-1} x ] - \mu^{\top} \Sigma^{-1} \mu
-\end{align}
-Inserting the values for the standard normal in 1 dimension,
-$Z=\sqrt{2\pi}$ and  $V(x)=x^2$, into (\ref{eq:log_z}) we can calculate the value
-that the integral of $F_t$ should take as
-\begin{align}
-    -\frac{1}{2} \log 2\pi &= -\frac{1}{2} - \frac{1}{2}\log 2\pi  - 1 + \int_0^\infty F_t dt \\
-    \frac{1}{2} \log 2\pi &= \frac{1}{2} + \frac{1}{2}\log 2\pi  + 1 - \int_0^\infty F_t dt \\
-    \int_0^\infty F_t dt &= \frac{3}{2} 
-\end{align}
-
-
+% \begin{equation}
+%    \int_0^\infty F_t dt  
+%    = - \frac{1}{2}\log 2\pi - \frac{1}{2}\log |\Sigma_0| 
+% \end{equation}
 
 \section{Appendix}
-\subsection{A: Derivation of gradient estimation}
-    This appendix contains the calculation to get from the derivative of the KL-divergence in (\ref{eq:svgd})
+\subsection{Derivation of gradient estimation}
+    This appendix contains the calculation to get from the derivative of the \KL-divergence in (\ref{eq:svgd})
     to the update for the algorithm in (\ref{eq:F_approximation}).
     Starting with the original theorem and expanding the Stein operator we get
     \begin{align}
-        \frac{d}{dt}\ KL( q^t \| p ) &= - \mathbb{E}_{x \sim q} \left[ \text{trace} \left( \mathcal{A}_q \phi(x) \right) \right] \\
+        \frac{d}{dt}\ \KL( q^t \| p ) &= - \mathbb{E}_{x \sim q} \left[ \text{trace} \left( \mathcal{A}_q \phi(x) \right) \right] \\
              &=  - \mathbb{E}_{x \sim q} \left[ 
                  \text{trace} \left( \phi(x) \nabla_x \log p(x)^\top  + \nabla_x \phi(x) \right)
              \right]\
@@ -276,14 +274,14 @@ that the integral of $F_t$ should take as
     be further simplified to
 
     \begin{align}
-        \frac{d}{dt} \text{KL}( q^t \| p ) = - \mathbb{E}_{x\sim q} \mathbb{E}_{y \sim q} \big[
+        \frac{d}{dt} \text{\KL}( q^t \| p ) = - \mathbb{E}_{x\sim q} \mathbb{E}_{y \sim q} \big[
             & k(x,y) (\nabla_y \log p(y))^\top \nabla_x \log p(x) \\
             &+ (\nabla_y k(x,y) )^\top \nabla_x \log p(x) \\
             &+ (\nabla_x k(x,y) )^\top \nabla_y \log p(y) \\
             &+ \sum_i \frac{ \partial^2 }{ \partial x_i \partial y_i } k(x,y) \big]
     \end{align}
     \begin{align}
-        \frac{d}{dt} \text{KL} ( q^t \| p ) =
+        \frac{d}{dt} \text{\KL} ( q^t \| p ) =
         -& \mathbb{E}_{x,y\sim q} \left[ k(x,y) \nabla_y \log p(y)^\top \nabla \log p(x) \right] \\ 
         -& \mathbb{E}_{x,y\sim q} \left[ \nabla_x k(x,y)^\top \nabla_y \log p(y) \right] \\ 
         -& \mathbb{E}_{x,y\sim q} \left[ \nabla_y k(x,y^\top \nabla_x \log p(x) \right] \\ 
@@ -303,7 +301,7 @@ that the integral of $F_t$ should take as
     where $d$ is the dimensionality of $x$
     reducing the derivative to
     \begin{align}
-        \frac{d}{dt}\ KL( q^t \| p ) = - \mathbb{E}_{x,y\sim q} \Bigg[ &k(x,y) \nabla_y \log p(y)^\top \nabla \log p(x) \\ 
+        \frac{d}{dt}\ \KL( q^t \| p ) = - \mathbb{E}_{x,y\sim q} \Bigg[ &k(x,y) \nabla_y \log p(y)^\top \nabla \log p(x) \\ 
         +& \frac{2k(x,y)}{h}\Big( d - \frac{2}{h}\|x-y\|^2 \Big)\Bigg].
     \end{align}
 
@@ -313,7 +311,7 @@ that the integral of $F_t$ should take as
     its $k^{th}$ coordinate.
     For arbitrary kernels we get
     \begin{align}
-        \frac{d}{dt}\ KL( q^t \| p ) \approx -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla_{x_i} V(x_i)^\top \nabla_{x_j} V(x_j)  \\ 
+        \frac{d}{dt}\ \KL( q^t \| p ) \approx -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla_{x_i} V(x_i)^\top \nabla_{x_j} V(x_j)  \\ 
         -& \frac{1}{n}\sum_{x_i,x_j}^n  \nabla_{x_i} k(x_i,x_j)^\top \nabla_{x_j} V(x_j)  \\ 
         -& \frac{1}{n}\sum_{x_i,x_j}^n  \nabla_{x_j} k(x_i,x_j)^\top \nabla_{x_i} V(x_i)  \\ 
         -& \frac{1}{n}\sum_{x_i,x_j}^n \left( \sum_k \frac{ \partial^2 }{ \partial (x_i)_k \partial (x_j)_k } 
@@ -321,14 +319,14 @@ that the integral of $F_t$ should take as
     \end{align}
     which simplifies to 
     \begin{align}
-        \frac{d}{dt}\ KL( q^t \| p ) \approx -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla_{x_i} V(x_i)^\top \nabla_{x_i} V(x_i)  \\ 
+        \frac{d}{dt}\ \KL( q^t \| p ) \approx -& \frac{1}{n}\sum_{x_i,x_j}^n  k(x_i,x_j) \nabla_{x_i} V(x_i)^\top \nabla_{x_i} V(x_i)  \\ 
         -& \frac{1}{n}\sum_{x_i,x_j}^n \frac{2k(x_i, x_j)}{h}\Big( d - \frac{2}{h} \|x_i - x_j\|^2 \Big)
     \end{align} 
 
     % not sure if the stuff below will be needed
     Inserting $p(x) = \frac{e^{-V(x)}}{Z}$ we would get
     \begin{align}
-        \frac{d}{dt} \text{KL}( q^t \| p ) =
+        \frac{d}{dt} \text{\KL}( q^t \| p ) =
         -& \mathbb{E}_{x,y\sim q} \left[ k(x,y) \nabla_y V(x)^\top \nabla_x V(x) \right] \\ 
         -& \mathbb{E}_{x,y\sim q} \left[ \nabla_x k(x,y)^\top \nabla_y V(y) \right] \\ 
         -& \mathbb{E}_{x,y\sim q} \left[ \nabla_x k(x,y)^\top \nabla_x V(x) \right] \\ 
@@ -343,4 +341,132 @@ that the integral of $F_t$ should take as
         \right]
     \end{align}
     where the gradient in the second term is taken with respect to the first variable.
-    \end{document}
+
+\subsection{Analytical Values for $\log Z$, $H[q_0]$ and $\mathbb{E}_{q_0}[V(x)]$}
+\subsubsection{The Normal Distribution}
+\label{sec:gaussian_logz}
+
+Suppose that both $q_0$ and $p$ are (multivariate) normal distributions of dimension
+$d$ with parameters $(\mu_0, \Sigma_0)$ and $(\mu_p, \Sigma_p)$ respectively.
+
+\begin{gather}
+    \mathbb{E}_{q_0}[V(x)] = \mathbb{E}_{q_0}[ \frac{1}{2} (x - \mu)^{\top} \Sigma^{-1}(x - \mu) ] \\
+    = \frac{1}{2}\frac{1}{|2\pi\Sigma_0|^{\frac{1}{2}}} \int_{-\infty}^{\infty} 
+    (x-\mu_p)^{\top} \Sigma^{-1}_p (x-\mu_p) 
+    \exp \left( - \frac{1}{2}(x-\mu_0)^{\top}\Sigma^{-1}_0 (x-\mu_0) \right) dx
+    % =& \mathbb{E}_{q_0}[ \frac{1}{2} x^{\top} \Sigma^{-1}x ] + \mathbb{E}_{q_0}[ \frac{1}{2} \mu^{\top} \Sigma^{-1}x ] \\
+    %  &+ \mathbb{E}_{q_0}[ \frac{1}{2} x^{\top} \Sigma^{-1}\mu ] + \mathbb{E}_{q_0}[ \frac{1}{2} \mu^{\top} \Sigma^{-1}\mu ] 
+\end{gather}
+% Where the subscripts $p$ and $0$ indicate that the parameters correspond to the target
+% or initial distribution respectively.\\
+Since $\Sigma_0$ is invertible it can be diagonalized, let $\Sigma_0 = PDP^{\top}$
+be a diagonalization of $\Sigma_0$, then the integral can be solved using the following
+change of variables $Y = PX - P\mu_0$. Under this transformation
+
+\small
+\begin{gather}
+    \frac{1}{2}\frac{1}{|2\pi\Sigma_0|^{\frac{1}{2}}} \int_{-\infty}^{\infty} (x-\mu_p)^{\top} \Sigma^{-1}_p (x-\mu_p) 
+    \exp \left(- \frac{1}{2}(x-\mu_0)^{\top}\Sigma^{-1}_0 (x-\mu_0) \right) dx \\
+    \
+    = \frac{1}{2}\frac{1}{|{2\pi}\Sigma_0|^{\frac{1}{2}}} \int_{-\infty}^{\infty} 
+    (P^{\top}y+\mu_0-\mu_p)^{\top} \Sigma^{-1}_p (P^{\top}y+\mu_0-\mu_p) 
+    \exp \left( -\frac{1}{2}y^{\top}D^{-1} y \right) dy 
+\end{gather}
+\normalsize
+ 
+Since $D^{-1}$ is a diagonal matrix the exponent becomes the sum $\sum_{i=1}^d \frac{y_i^2}{\sigma_i^2}$,
+where $\sigma_i$ denotes the $i^{th}$ eigenvalue of $\Sigma_0$,
+and thus factors over the components of $y$. The integral can then be evaluated by appealing
+to the one-dimensional case and using standard results.\\
+Considering the integrals term by term we get, for the $y^2$
+
+\begin{gather}
+    \frac{1}{2}\frac{1}{|2\pi\Sigma_0|^{\frac{1}{2}}} \int_{-\infty}^{\infty} y^{\top}P \Sigma^{-1}_p P^{\top} y 
+    \prod_{i=1}^d \exp \left( - \frac{1}{2} \frac{y_i^2}{\sigma_i^2} \right)dy \\
+    \
+    = \frac{1}{2}\frac{1}{|2\pi\Sigma_0|^{\frac{1}{2}}}  \sum_{j,k=1}^{d} 
+    (P\Sigma_p^{-1} P^{\top})_{kj} \int_{-\infty}^{\infty} y_k  y_j
+    \prod_{i=1}^d \exp \left( - \frac{1}{2} \frac{y_i^2}{\sigma_i^2} \right)dy \\
+    \
+    \textrm{when $j \neq k$ the integrand is odd and the integral therefore 0}\\
+    \textrm{when $j = k$ however it similar to variance in 1D} \\
+    \textrm{i.e. } \int_{-\infty}^{\infty} y^2 \exp(- \frac{1}{2} \frac{y^2}{\sigma^2} ) dy = \sqrt{2 \pi} \sigma^3 \\
+    \textrm{which, taken over each component becomes } 
+    (\sqrt{2\pi})^d \prod_{i=1}^d \sigma_i^3 = |2\pi\Sigma_0|^{\frac{1}{2}} |\Sigma_0| \\
+    \
+    = \frac{1}{2} \sum_{i=1}^{d} (P\Sigma_p^{-1} P^{\top})_{ii} |\Sigma_0| \\
+    \
+    = \frac{1}{2} \trace(P\Sigma_p^{-1} P^{\top}) \sum_{i=1}^{d} |\Sigma_0|  \\
+    \
+    = \frac{1}{2}|\Sigma_0| \trace( \Sigma_p^{-1} )
+\end{gather}
+
+For the $y$ terms we get
+
+\begin{gather}
+    = \frac{1}{2}\frac{1}{|{2\pi}\Sigma_0|^{\frac{1}{2}}} \int_{-\infty}^{\infty} 
+    y^{\top}P \Sigma^{-1}_p (\mu_0-\mu_p) 
+    \prod_{i=1}^d \exp \left( - \frac{1}{2} \frac{y_i^2}{\sigma_i^2} \right)dy \\
+    \
+    = \frac{1}{2}\frac{1}{|{2\pi}\Sigma_0|^{\frac{1}{2}}} 
+    \sum_{j,k=1}^{d} (P \Sigma^{-1}_p)_{jk} (\mu_0-\mu_p)_k \int_{-\infty}^{\infty} y_j 
+    \prod_{i=1}^d \exp \left( - \frac{1}{2} \frac{y_i^2}{\sigma_i^2} \right)dy \\
+    \
+    = 0
+\end{gather}
+
+Since in each component it is the expectation of a 0 mean Gaussian.\\
+The constant term evaluates to
+
+\begin{gather}
+    = \frac{1}{2}\frac{1}{|{2\pi}\Sigma_0|^{\frac{1}{2}}} \int_{-\infty}^{\infty} 
+    (\mu_0-\mu_p)^{\top} \Sigma^{-1}_p (\mu_0-\mu_p) 
+    \prod_{i=1}^d \exp \left( - \frac{1}{2} \frac{y_i^2}{\sigma_i^2} \right)dy \\
+    \
+    = \frac{1}{2}\frac{1}{|{2\pi}\Sigma_0|^{\frac{1}{2}}} 
+    (\mu_0-\mu_p)^{\top} \Sigma^{-1}_p (\mu_0-\mu_p) 
+    \int_{-\infty}^{\infty} 
+    \prod_{i=1}^d \exp \left( - \frac{1}{2} \frac{y_i^2}{\sigma_i^2} \right)dy \\
+    \
+    \textrm{here each component is proportional to a the integral of a 1D Gaussian pdf } \\
+    \textrm{i.e. } \int_{-\infty}^{\infty}  \exp(- \frac{1}{2} \frac{y^2}{\sigma^2} ) dy = \sqrt{2 \pi} \sigma \\
+    \
+    = \frac{1}{2}\frac{1}{|{2\pi}\Sigma_0|^{\frac{1}{2}}} 
+    (\mu_0-\mu_p)^{\top} \Sigma^{-1}_p (\mu_0-\mu_p) 
+    \prod_{i=1}^d \int_{-\infty}^{\infty} \exp \left( - \frac{1}{2} \frac{y_i^2}{\sigma_i^2} \right)dy \\
+    \
+    = \frac{1}{2}\frac{1}{|{2\pi}\Sigma_0|^{\frac{1}{2}}} 
+    (\mu_0-\mu_p)^{\top} \Sigma^{-1}_p (\mu_0-\mu_p) 
+    \prod_{i=1}^d \sqrt{2\pi} \sigma_i \\
+    \
+    = \frac{1}{2}\frac{1}{|{2\pi}\Sigma_0|^{\frac{1}{2}}} 
+    (\mu_0-\mu_p)^{\top} \Sigma^{-1}_p (\mu_0-\mu_p) 
+    |2\pi \Sigma_0|^{\frac{1}{2}} \\
+    \
+    = \frac{1}{2} (\mu_0-\mu_p)^{\top} \Sigma^{-1}_p (\mu_0-\mu_p)  = V(\mu_0)
+\end{gather}
+
+So in sum
+
+\begin{gather}
+    \mathbb{E}_{q_0}[V(x)] = 
+    \frac{1}{2}|\Sigma_0| \trace( \Sigma_p^{-1} )
+    + \frac{1}{2} (\mu_0-\mu_p)^{\top} \Sigma^{-1}_p (\mu_0-\mu_p)
+\end{gather}
+
+For the entropy of a Gaussian we have
+
+\begin{equation}
+    H[q_0] = \frac{d}{2} \log 2\pi + \frac{1}{2} \log |\Sigma| + \frac{d}{2}
+\end{equation}
+
+Substituting this in (\ref{eq:log_z}) results in
+
+\begin{gather}
+\log Z = -H[q^0] - \mathbb{E}_{q^0}[V(x)] +\int_0^\infty F_t dt \\
+       = - \frac{1}{2}\log 2\pi - \frac{1}{2}\log |\Sigma_0| 
+       - \frac{d}{2} - \frac{1}{2} |\Sigma_0| \trace( \Sigma_p^{-1} ) \\
+       - \frac{1}{2} (\mu_0 - \mu_p)^{\top} \Sigma_p^{-1} (\mu_0 - \mu_p) + \int_0^\infty F_t dt 
+\end{gather}
+
+\end{document}
