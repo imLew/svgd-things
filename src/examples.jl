@@ -18,22 +18,22 @@ end
 
 function expectation_V_gaussian(μ₀, μₚ, Σ₀, Σₚ)
     if Σ₀ isa Number
-        return 0.5 * ( ( Σ₀ / Σₚ ) -  (μ₀-μₚ)^2/Σₚ  )
+        return 0.5 * ( Σ₀ / Σₚ +  (μ₀-μₚ)^2/Σₚ  )
     end
     Σ₀ = get_pdmat(Σ₀)
     Σₚ = get_pdmat(Σₚ)
-    0.5 * ( ( det(Σ₀) * tr( inv(Σₚ) ) ) -  invquad(Σₚ, μ₀-μₚ) )
+    0.5 * (  tr(inv(Σₚ)*Σ₀) + invquad(Σₚ, μ₀-μₚ) )
 end
 
 function estimate_logZ(H0, EV, int_KL)
-    -H0 - EV + int_KL
+    H0 - EV + int_KL
 end
 
 function gaussian_logZ(μ, Σ)
     if Σ isa Number
-        return logpdf( Normal(μ, Σ), μ)
+        return -logpdf( Normal(μ, sqrt(Σ)), μ)
     end
-    logpdf( MvNormal(μ, Σ), μ)
+    -logpdf( MvNormal(μ, Σ), μ)
 end
 
 ## Sampling
@@ -49,10 +49,10 @@ function gaussian_1d(;
                     norm_method="standard",
                     kernel_width=nothing
                    )
-    target =  Normal(μ_initial, sqrt( Σ_initial ))
+    target =  Normal(μ_target, sqrt( Σ_target ))
     p = rand(target, n_particles)
     grad_logp(x) = gradp(target, x)
-    initial_dist = Normal(μ_target, sqrt(Σ_target))
+    initial_dist = Normal(μ_initial, sqrt(Σ_initial))
     q_0 = rand(initial_dist, (1, n_particles) )
     q = copy(q_0)
     @time q, dkl = svgd_fit_with_int(q, grad_logp, n_iter=n_iter, 
