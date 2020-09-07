@@ -54,7 +54,9 @@ function svgd_fit_with_int(q, grad_logp ;n_iter=100, step_size=1,
             kernel.transform.s .= 1/median(pairwise(Euclidean(), q, dims=2))
         end
         # @time ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
+        println("phi time")
         @time ϕ = calculate_phi(kernel, q, grad_logp)
+        println("dKL time")
         @time dKL = compute_phi_norm(q, kernel, grad_logp, norm_method=norm_method, ϕ=ϕ)
         q .+= step_size*ϕ
         push!(dKL_steps, dKL)
@@ -75,6 +77,7 @@ function calculate_phi(kernel, q, grad_logp)
     for (i, xi) in enumerate(eachcol(q))
         for (xj, glp_j) in zip(eachcol(q), glp)
             d = kernel(xj, xi) * glp_j
+            # K = kernel_gradient( kernel, xj, xi )
             K = gradient( x->kernel(x, xi), xj )[1]
             ϕ[:, i] .+= d .+ K 
         end

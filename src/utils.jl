@@ -57,6 +57,15 @@ function gradp(d::Distribution, x)
     ForwardDiff.gradient(x->log(pdf(d, x)), reshape(x, length(x)) )
 end
 
+function kernel_gradient(k::Kernel, x, y)
+    Zygote.gradient( x->k(x,y), x)[1]
+end
+
+function kernel_gradient(k::TransformedKernel{SqExponentialKernel,ScaleTransform{Float64}},x,y)
+    h = 1/k.transform.s[1]^2
+    -2/h * (x-y) * exp(-h\norm(x-y))
+end
+
 function collect_stein_discrepancies(;particle_sizes, problem_function, dir_name, 
                                      n_samples=100)
     result = Dict()
