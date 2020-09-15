@@ -31,9 +31,6 @@ grad(f,x,y) = gradient(f,x,y)[1]
 
 function svgd_fit_with_int(q, grad_logp ;n_iter=100, step_size=1,
                           norm_method="standard", kernel_width=nothing)
-    if plotting
-        q_0 = copy(q)
-    end
     dKL_steps = []
     if kernel_width isa Number
         kernel = TransformedKernel( 
@@ -75,7 +72,8 @@ function calculate_phi(kernel, q, grad_logp)
     for (i, xi) in enumerate(eachcol(q))
         for (xj, glp_j) in zip(eachcol(q), glp)
             d = kernel(xj, xi) * glp_j
-            K = gradient( x->kernel(x, xi), xj )[1]
+            # K = gradient( x->kernel(x, xi), xj )[1]
+            K = kernel_gradient( kernel, xj, xi )
             ϕ[:, i] .+= d .+ K 
         end
     end
@@ -102,15 +100,22 @@ function compute_phi_norm(q, kernel, grad_logp; norm_method="standard", ϕ=nothi
     elseif norm_method == "unbiased"
         unbiased_stein_discrep(q, kernel, grad_logp)
     elseif norm_method == "RKHS_norm"
-        if size(q)[1] == 1
-            empirical_RKHS_norm(kernel, q, ϕ)
-        end
+        empirical_RKHS_norm(kernel, q, ϕ)
     end
 end
 
 function empirical_RKHS_norm(kernel::Kernel, q, ϕ)
-    k_mat = kernelpdmat(kernel, q)
-    invquad(k_mat, reshape(ϕ, length(ϕ)))
+    if size(q)[1] == 1
+        invquad(kernelpdmat(kernel, q), reshape(ϕ, length(ϕ)))
+    else
+        invquad(flat_matrix_kernel_matrix(kernel, q), reshape(ϕ, length(ϕ)))
+        # kmat = kernelpdmat.(kernel, eachrow(q))
+        # sum(invquad.(kmat, eachrow(ϕ)))
+    end
+end
+
+function empirical_RKHS_norm(kernel::MatrixKernel, q, ϕ)
+    invquad(flat_matrix_kernel_matrix(kernel, q), reshape(ϕ, length(ϕ)))
 end
 
 function unbiased_stein_discrep(q, kernel, grad_logp)
