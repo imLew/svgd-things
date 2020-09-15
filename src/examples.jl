@@ -133,8 +133,28 @@ function run_svgd_and_plot(initial_dist, target_dist; step_size=0.01,
            );
 end
 
-
 ## Sampling
+
+function exponential_1D(;
+                    n_particles=100,
+                    step_size=1,
+                    n_iter=500,
+                    λ_initial = 5,
+                    λ_target = 1,
+                    norm_method="standard",
+                    kernel_width=nothing
+                   )
+    target =  Exponential(1/λ_target)
+    p = rand(target, n_particles)
+    grad_logp(x) = gradp(target, x)
+    initial_dist = Exponential(1/λ_initial)
+    q_0 = rand(initial_dist, (1, n_particles) )
+    q = copy(q_0)
+    @time q, dkl = svgd_fit_with_int(q, grad_logp, n_iter=n_iter, 
+                                     step_size=step_size, norm_method=norm_method,
+                                    kernel_width=kernel_width)	
+    q, q_0, p, dkl
+end
 
 function gaussian_1d(;
                     n_particles=100,
@@ -147,10 +167,10 @@ function gaussian_1d(;
                     norm_method="standard",
                     kernel_width=nothing
                    )
-    target =  Normal(μ_initial, Σ_initial)
+    target =  Normal(μ_target, sqrt( Σ_target ))
     p = rand(target, n_particles)
     grad_logp(x) = gradp(target, x)
-    initial_dist = Normal(μ_target, Σ_target)
+    initial_dist = Normal(μ_initial, sqrt(Σ_initial))
     q_0 = rand(initial_dist, (1, n_particles) )
     q = copy(q_0)
     @time q, dkl = svgd_fit_with_int(q, grad_logp, n_iter=n_iter, 
@@ -246,7 +266,6 @@ function gaussian3d_mixture()
 end
 
 ## model fitting
-
 # TODO: fix this function
 function regression2d() 
     n_samples = 100

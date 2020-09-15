@@ -4,12 +4,12 @@ using LinearAlgebra
 using Random
 using Zygote
 using Distances
-
 using Plots
 using Distributions
 using DataFrames
 using CSV
 using ForwardDiff
+using PDMats
 
 export run_and_plot
 export plot_svgd_results
@@ -74,7 +74,18 @@ function plot_svgd_results(q_0, q, p; title="", label="")
                         title=title,
                         label=label)
     end
-    # display(plot)
+end
+
+function get_pdmat(K)
+    Kmax =maximum(K)
+    α = eps(eltype(K))
+    while !isposdef(K+α*I) && α < 0.01*Kmax
+        α *= 2.0
+    end
+    if α >= 0.01*Kmax
+        throw(ErrorException("Adding noise on the diagonal was not sufficient to build a positive-definite matrix:\n\t- Check that your kernel parameters are not extreme\n\t- Check that your data is sufficiently sparse\n\t- Maybe use a different kernel"))
+    end
+    return PDMat(K+α*I)
 end
 
 function gradp(d::Distribution, x)
@@ -160,13 +171,17 @@ function run_and_plot(; n_particles, n_iter, kernel_width, step_size=0.05,
 
     title="$n_particles particles; $n_iter iterations; kernel_width $kernel_width; integral dKL = $int_value"
 
-    title_plot = plot(grid=false,annotation=(0.5,0.5,title),ticks=([]),fgborder=:white,subplot=1, framestyle=:none)
+    title_plot = plot(grid=false,annotation=(0.5,0.5,title),
+                      ticks=([]),fgborder=:white,subplot=1, framestyle=:none)
 
     norm_plot = plot(rkhs_norm, labels="RKHS norm");
 
-    distributions = histogram([reshape(q_0, length(q_0)) reshape(q, length(q)) p], fillalpha=0.3, labels=["q_0" "q" "p"])
+    distributions = histogram([reshape(q_0, length(q_0)) reshape(q, length(q)) p], 
+                              fillalpha=0.3, labels=["q_0" "q" "p"])
 
-    display( plot(title_plot, norm_plot, distributions, layout=layout, size=(1400,800)))
+    display( plot(title_plot, norm_plot, distributions, 
+                  layout=layout, size=(1400,800)))
+
     if occursin(".", title)
         title = join(split(title, "."), "point")
     end

@@ -1,3 +1,11 @@
+using Statistics
+using KernelFunctions
+using LinearAlgebra
+using Random
+using Zygote
+using Distances
+using PDMats
+
 export svgd_fit_with_int
 export median_trick
 export kernel_grad_matrix
@@ -7,17 +15,6 @@ export unbiased_stein_discrep
 export stein_discrep_biased
 export svgd_step_with_int
 
-
-using Statistics
-using KernelFunctions
-using LinearAlgebra
-using Random
-using Zygote
-using Distances
-using PDMats
-
-global verbose = false
-global plotting = true
 
 function median_trick(x)
     if size(x)[end] == 1
@@ -50,14 +47,13 @@ function svgd_fit_with_int(q, grad_logp ;n_iter=100, step_size=1,
         elseif kernel_width == "median"
             kernel.transform.s .= 1/median(pairwise(Euclidean(), q, dims=2))
         end
+        println("phi time")
         # @time ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
         @time ϕ = calculate_phi(kernel, q, grad_logp)
+        println("dKL time")
         @time dKL = compute_phi_norm(q, kernel, grad_logp, norm_method=norm_method, ϕ=ϕ)
         q .+= step_size*ϕ
         push!(dKL_steps, dKL)
-        if plotting
-            histogram([q_0[:], q[:]], alpha=0.4,)
-        end
     end
     return q, dKL_steps
 end
@@ -72,8 +68,8 @@ function calculate_phi(kernel, q, grad_logp)
     for (i, xi) in enumerate(eachcol(q))
         for (xj, glp_j) in zip(eachcol(q), glp)
             d = kernel(xj, xi) * glp_j
-            # K = gradient( x->kernel(x, xi), xj )[1]
-            K = kernel_gradient( kernel, xj, xi )
+            # K = kernel_gradient( kernel, xj, xi )
+            K = gradient( x->kernel(x, xi), xj )[1]
             ϕ[:, i] .+= d .+ K 
         end
     end
