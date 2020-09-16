@@ -110,9 +110,9 @@ function empirical_RKHS_norm(kernel::Kernel, q, ϕ)
     end
 end
 
-function empirical_RKHS_norm(kernel::MatrixKernel, q, ϕ)
-    invquad(flat_matrix_kernel_matrix(kernel, q), reshape(ϕ, length(ϕ)))
-end
+# function empirical_RKHS_norm(kernel::MatrixKernel, q, ϕ)
+#     invquad(flat_matrix_kernel_matrix(kernel, q), reshape(ϕ, length(ϕ)))
+# end
 
 function unbiased_stein_discrep(q, kernel, grad_logp)
     n = size(q)[end]
