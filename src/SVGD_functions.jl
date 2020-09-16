@@ -113,11 +113,14 @@ end
 function empirical_RKHS_norm(kernel::Kernel, q, ϕ)
     if size(q)[1] == 1
         invquad(kernelpdmat(kernel, q), reshape(ϕ, length(ϕ)))
-    # else
-    #     # invquad(flat_matrix_kernel_matrix(kernel, q), reshape(ϕ, length(ϕ)))
-    #     kmat = kernelpdmat.(kernel, eachrow(q))
-    #     @info size(kmat)
-    #     sum(invquad.(kmat, eachrow(ϕ)))
+    else
+        # this first method tries to flatten the tensor equation
+        # invquad(flat_matrix_kernel_matrix(kernel, q), reshape(ϕ, length(ϕ)))
+        #
+        # this second approach is supposed to do the 1D case for each dimension
+        kmat = kernelpdmat.(kernel, eachrow(q))
+        @info size(kmat)
+        sum(invquad.(kmat, eachrow(ϕ)))
     end
 end
 
