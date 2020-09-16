@@ -1,5 +1,6 @@
 using Plots
 using Distributions
+
 flatten(x) = reshape(x, length(x))
 
 q, q0, p, rkhs_norm = gaussian_2d()
@@ -23,13 +24,7 @@ alg_params = Dict(
     :step_size = 0.01,
     :n_iter = 1000,
     :n_particles = 50,
-    :kernel = :RBF,
-    :kernel_params = h,
-    :norm_method = "RKHS_norm"
+    :norm_method = "RKHS_norm",
+    :kernel_width = "median_trick"
     )
 
-run_gaussian(n_iter=1000, step_size=0.05)
-
-run_gaussian(Σ₀=2, n_iter=2000)
-
-run_gaussian(μ₀=-5, Σ₀=2, Σₚ=2, n_iter=2000, step_size=0.05)
