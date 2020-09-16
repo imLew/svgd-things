@@ -2,6 +2,8 @@ using Distributions
 using LinearAlgebra
 using PDMats
 
+export plot_1D
+export plot_2D
 export gaussian_2d
 export run_svgd_and_plot
 
@@ -65,24 +67,16 @@ function pdf_potential(d::MvNormal, x)
     2 \ invquad(Σ, x-μ)
 end
 
-
 function run_svgd(initial_dist, target_dist; alg_params)
-    
     p = rand(target_dist, n_particles)
     grad_logp(x) = gradp(target_dist, x)
     q_0 = rand( initial_dist, (1, n_particles) )
     q = copy(q_0)
-    @time q, rkhs_norm = svgd_fit_with_int(q, grad_logp, n_iter=n_iter, 
-                                     step_size=step_size, norm_method=norm_method,
-                                    kernel_width=kernel_width)	
-
+    @time q, rkhs_norm = svgd_fit_with_int(q, grad_logp; alg_params...)	
     return q_0, q, p, rkhs_norm
 end
 
-function run_svgd_and_plot(initial_dist, target_dist; step_size=0.01, 
-                           n_particles=100, n_iter=1000, 
-                           norm_method="RKHS_norm", kernel_width="median_trick")
-
+function run_svgd_and_plot(initial_dist, target_dist, alg_params)
     H₀ = Distributions.entropy(initial_dist)
     EV = numerical_expectation( initial_dist, x -> -logpdf(target_dist, x) )
     logZ = 0
@@ -93,48 +87,83 @@ function run_svgd_and_plot(initial_dist, target_dist; step_size=0.01,
     @info "empirical logZ" estimate_logZ(H₀, EV, step_size*sum(rkhs_norm))
     @info "true logZ" logZ
 
-    layout = @layout [t{0.1h} ; i ; a b; c{0.1h}]
+    plot_results(initial_dist, target_dist, alg_params, H₀, logZ, EV, 
+                 rkhs_norm, q)
+end
 
-    caption="""n_particles=$n_particles; n_iter=$n_iter; norm_method=$norm_method; 
-            kernel_width=$kernel_width; step_size=$step_size"""
+function plot_results(initial_dist, target_dist, alg_params, 
+                      H₀, logZ, EV, rkhs_norm, q)
+    # caption="""n_particles=$n_particles; n_iter=$n_iter; 
+    #         norm_method=$norm_method; kernel_width=$kernel_width; 
+    #         step_size=$step_size"""
+    caption = ""
     caption_plot = plot(grid=false,annotation=(0.5,0.5,caption),
                       ticks=([]),fgborder=:white,subplot=1, framestyle=:none);
-    title = """$(typeof(initial_dist)) $(Distributions.params(initial_dist)) 
-             target $(typeof(target_dist)) $(Distributions.params(target_dist))"""
+    # title = """$(typeof(initial_dist)) $(Distributions.params(initial_dist)) 
+    #          target $(typeof(target_dist)) 
+    #          $(Distributions.params(target_dist))"""
+    title = ""
     title_plot = plot(grid=false,annotation=(0.5,0.5,title),
                       ticks=([]),fgborder=:white,subplot=1, framestyle=:none);
+    int_plot, norm_plot = plot_integration(H₀, logZ, EV, rkhs_norm)
 
+    dim = size(q)[1]
+    if dim > 3 
+        layout = @layout [t{0.1h} ; d{0.3w} i ; c{0.1h}]
+        display(plot(title_plot, norm_plot, int_plot, 
+                      caption_plot, layout=layout, size=(1400,800), 
+                      legend=:topleft));
+    else
+        if dim == 1
+            dist_plot = plot_1D(initial_dist, target_dist, q)
+        elseif dim == 2
+            dist_plot = plot_2D(initial_dist, target_dist, q)
+        # elseif dim == 3
+        #     dist_plot = plot_3D(initial_dist, target_dist, q)
+        end
+    layout = @layout [t{0.1h} ; i ; a b; c{0.1h}]
+    display(plot(title_plot, int_plot, norm_plot, distributions, 
+                  caption_plot, layout=layout, size=(1400,800), 
+                  legend=:topleft));
+    end
+end
+
+function plot_2D(initial_dist, target_dist, q)
+    dist_plot = scatter(q[1,:], q[2,:], 
+                        labels="q" , title="particles");
+    min_q = minimum(q)
+    max_q = maximum(q)
+    t = min_q-0.2*abs(min_q):0.05:max_q+0.2*abs(max_q)
+    contour!(t, t, (x,y)->pdf(target_dist, [x, y]), labels="p")
+    contour!(t, t, (x,y)->pdf(initial_dist, [x, y]), labels="q₀")
+    return dist_plot
+end
+
+function plot_integration(H₀, logZ, EV, rkhs_norm)
     int_plot = plot(estimate_logZ.([H₀], [EV],
-                        step_size*cumsum(rkhs_norm)), title="log Z = $logZ",
+                    step_size*cumsum(rkhs_norm)), title="log Z = $logZ",
                     labels="estimate for log Z");
 
     hline!([logZ], labels="analytical value log Z");
 
     norm_plot = plot(-step_size*rkhs_norm, labels="RKHS norm", title="dKL/dt");
-
-    distributions = histogram(reshape(q, length(q)), 
-                              fillalpha=0.3, labels="q" ,bins=20,
-                              title="particles", normalize=true);
-    if target_dist != nothing
-        plot!(x->pdf(target_dist, x),
-              minimum(q)-0.2*abs(minimum(q)):0.05:maximum(q)+0.2*abs(maximum(q)),
-              labels="p")
-    end
-    if initial_dist != nothing
-        plot!(x->pdf(initial_dist, x),
-              minimum(q)-0.2*abs(minimum(q)):0.05:maximum(q)+0.2*abs(maximum(q)),
-              labels="q₀")
-    end
-
-    display( plot(title_plot, int_plot, norm_plot, distributions, caption_plot,
-                  layout=layout, size=(1400,800), 
-                  legend=:topleft
-                 )
-           );
 end
 
-## Sampling
+function plot_1D(initial_dist, target_dist, q)
+    n_bins = length(q) ÷ 5
+    dist_plot = histogram(reshape(q, length(q)), 
+                          fillalpha=0.3, labels="q" ,bins=20,
+                          title="particles", normalize=true);
+    min_q = minimum(q)
+    max_q = maximum(q)
+    t = min_q-0.2*abs(min_q):0.05:max_q+0.2*abs(max_q)
+    plot!(x->pdf(target_dist, x), t, labels="p")
+    plot!(x->pdf(initial_dist, x), t, labels="q₀")
+    return dist_plot
+end
 
+
+## Sampling
 function exponential_1D(;
                     n_particles=100,
                     step_size=1,
@@ -156,7 +185,7 @@ function exponential_1D(;
     q, q_0, p, dkl
 end
 
-function gaussian_1d(;
+function gaussian_1d(
                     n_particles=100,
                     step_size=1,
                     n_iter=500,
