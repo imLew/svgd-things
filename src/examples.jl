@@ -40,7 +40,7 @@ function logZ(d::Distribution)
     return 0
 end
 
-function logZ(d::T where T <: Union{Normal, MvNormal})
+function logZ(d::T) where T <: Union{Normal, MvNormal}
     - logpdf( d, params(d)[1] )
 end
 
@@ -67,28 +67,19 @@ function pdf_potential(d::MvNormal, x)
     2 \ invquad(Σ, x-μ)
 end
 
-function run_svgd(initial_dist, target_dist; alg_params)
-    p = rand(target_dist, n_particles)
-    grad_logp(x) = gradp(target_dist, x)
-    q_0 = rand( initial_dist, (1, n_particles) )
-    q = copy(q_0)
-    @time q, rkhs_norm = svgd_fit_with_int(q, grad_logp; alg_params...)	
-    return q_0, q, p, rkhs_norm
-end
-
 function run_svgd_and_plot(initial_dist, target_dist, alg_params)
     H₀ = Distributions.entropy(initial_dist)
     EV = numerical_expectation( initial_dist, x -> -logpdf(target_dist, x) )
-    logZ = 0
     
-    @time q_0, q, p, rkhs_norm = run_svgd(initial_dist, target_dist, 
-                                          alg_params=alg_params)	
+    @time q_0, q, p, rkhs_norm = svgd_fit(initial_dist, target_dist; 
+                                                   alg_params...)	
 
-    @info "empirical logZ" estimate_logZ(H₀, EV, step_size*sum(rkhs_norm))
-    @info "true logZ" logZ
+    @info "empirical logZ" estimate_logZ(H₀, EV, 
+                                         alg_params[:step_size]*sum(rkhs_norm))
+    @info "true logZ" logZ(target_dist)
 
-    plot_results(initial_dist, target_dist, alg_params, H₀, logZ, EV, 
-                 rkhs_norm, q)
+    plot_results(initial_dist, target_dist, alg_params, H₀, 
+                 logZ(target_dist), EV, rkhs_norm, q)
 end
 
 function plot_results(initial_dist, target_dist, alg_params, 
@@ -105,7 +96,8 @@ function plot_results(initial_dist, target_dist, alg_params,
     title = ""
     title_plot = plot(grid=false,annotation=(0.5,0.5,title),
                       ticks=([]),fgborder=:white,subplot=1, framestyle=:none);
-    int_plot, norm_plot = plot_integration(H₀, logZ, EV, rkhs_norm)
+    int_plot, norm_plot = plot_integration(H₀, logZ, EV, rkhs_norm, 
+                                           alg_params[:step_size])
 
     dim = size(q)[1]
     if dim > 3 
@@ -122,7 +114,7 @@ function plot_results(initial_dist, target_dist, alg_params,
         #     dist_plot = plot_3D(initial_dist, target_dist, q)
         end
     layout = @layout [t{0.1h} ; i ; a b; c{0.1h}]
-    display(plot(title_plot, int_plot, norm_plot, distributions, 
+    display(plot(title_plot, int_plot, norm_plot, dist_plot, 
                   caption_plot, layout=layout, size=(1400,800), 
                   legend=:topleft));
     end
@@ -139,7 +131,7 @@ function plot_2D(initial_dist, target_dist, q)
     return dist_plot
 end
 
-function plot_integration(H₀, logZ, EV, rkhs_norm)
+function plot_integration(H₀, logZ, EV, rkhs_norm, step_size)
     int_plot = plot(estimate_logZ.([H₀], [EV],
                     step_size*cumsum(rkhs_norm)), title="log Z = $logZ",
                     labels="estimate for log Z");
@@ -147,6 +139,7 @@ function plot_integration(H₀, logZ, EV, rkhs_norm)
     hline!([logZ], labels="analytical value log Z");
 
     norm_plot = plot(-step_size*rkhs_norm, labels="RKHS norm", title="dKL/dt");
+    return int_plot, norm_plot
 end
 
 function plot_1D(initial_dist, target_dist, q)
@@ -179,7 +172,7 @@ function exponential_1D(;
     initial_dist = Exponential(1/λ_initial)
     q_0 = rand(initial_dist, (1, n_particles) )
     q = copy(q_0)
-    @time q, dkl = svgd_fit_with_int(q, grad_logp, n_iter=n_iter, 
+    @time q, dkl = svgd_fit(q, grad_logp, n_iter=n_iter, 
                                      step_size=step_size, norm_method=norm_method,
                                     kernel_width=kernel_width)	
     q, q_0, p, dkl
@@ -202,7 +195,7 @@ function gaussian_1d(
     initial_dist = Normal(μ_initial, sqrt(Σ_initial))
     q_0 = rand(initial_dist, (1, n_particles) )
     q = copy(q_0)
-    @time q, dkl = svgd_fit_with_int(q, grad_logp, n_iter=n_iter, 
+    @time q, dkl = svgd_fit(q, grad_logp, n_iter=n_iter, 
                                      step_size=step_size, norm_method=norm_method,
                                     kernel_width=kernel_width)	
     q, q_0, p, dkl
@@ -217,7 +210,7 @@ function gaussian_1d_mixture(;n_particles=100, step_size=1, n_iter=500,
     initial_dist = Normal(-10)
     q_0 = rand(initial_dist, (1, n_particles) )
     q = copy(q_0)
-    @time q, dkl = svgd_fit_with_int(q, grad_logp, n_iter=n_iter, 
+    @time q, dkl = svgd_fit(q, grad_logp, n_iter=n_iter, 
                                            step_size=step_size, norm_method=norm_method)	
     q, q_0, p, dkl
 end
@@ -232,7 +225,7 @@ function gaussian_2d(;n_particles=100, step_size=0.05, n_iter=500,
     initial = MvNormal(μ_initial, Σ_initial)
     q_0 = rand(initial, n_particles)
     q = copy(q_0)
-    q, dKL = svgd_fit_with_int(q, grad_logp, n_iter=n_iter, 
+    q, dKL = svgd_fit(q, grad_logp, n_iter=n_iter, 
                                step_size=step_size,
                                norm_method=norm_method)
     return q, q_0, p, dKL
@@ -261,7 +254,7 @@ function gaussian2d_mixture()
     q_0 = rand(initial, n_particles)
     q = copy(q_0)
 
-    @time q, int_dkl, dkl = svgd_fit_with_int(q, tglp, n_iter=n_iter, step_size=e)	
+    @time q, int_dkl, dkl = svgd_fit(q, tglp, n_iter=n_iter, step_size=e)	
     #= @time q = svgd_fit(q, tglp, n_iter=400, step_size=e) =#	
     plots.plot(dkl)
 end

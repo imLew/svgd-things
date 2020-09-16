@@ -21,10 +21,16 @@ problem_params = Dict(
     )
 
 alg_params = Dict(
-    :step_size = 0.01,
-    :n_iter = 1000,
-    :n_particles = 50,
-    :norm_method = "RKHS_norm",
-    :kernel_width = "median_trick"
+    :step_size => 0.01,
+    :n_iter => 1000,
+    :n_particles => 50,
+    :norm_method => "RKHS_norm",
+    :kernel_width => "median_trick"
     )
 
+run_svgd_and_plot(Normal(), Normal(2,0.5), alg_params)
+
+run_svgd_and_plot(
+    MvNormal([-2, 8], [9. 0.5; 0.5 1.]),
+    MvNormal([0, 0], [1. 0.; 0. 1.],),
+    alg_params)
