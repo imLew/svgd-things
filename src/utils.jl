@@ -11,7 +11,6 @@ using CSV
 using ForwardDiff
 using PDMats
 
-export run_and_plot
 export plot_svgd_results
 export gradp
 export dist_name_string
@@ -30,7 +29,8 @@ function flatten_tensor(K)
         for l in 1:l_max
             for i in 1:i_max
                 for j in 1:j_max
-                    K_flat[ flatten_index(d, i, i_max), flatten_index(l, j, j_max) ] = K[d,l,i,j]
+                    K_flat[ flatten_index(d, i, i_max), 
+                            flatten_index(l, j, j_max) ] = K[d,l,i,j]
                 end
             end
         end
@@ -83,7 +83,12 @@ function get_pdmat(K)
         α *= 2.0
     end
     if α >= 0.01*Kmax
-        throw(ErrorException("Adding noise on the diagonal was not sufficient to build a positive-definite matrix:\n\t- Check that your kernel parameters are not extreme\n\t- Check that your data is sufficiently sparse\n\t- Maybe use a different kernel"))
+        throw(ErrorException("""Adding noise on the diagonal was not 
+                             sufficient to build a positive-definite 
+                             matrix:\n\t- Check that your kernel parameters 
+                             are not extreme\n\t- Check that your data is 
+                             sufficiently sparse\n\t- Maybe use a different 
+                             kernel"""))
     end
     return PDMat(K+α*I)
 end
@@ -110,8 +115,8 @@ end
 #     -2/h * (x-y) * exp(-h\norm(x-y))
 # end
 
-function collect_stein_discrepancies(;particle_sizes, problem_function, dir_name, 
-                                     n_samples=100)
+function collect_stein_discrepancies(;particle_sizes, problem_function, 
+                                     dir_name, n_samples=100)
     result = Dict()
     for n_particles in particle_sizes
         result["$n_particles"] = []
@@ -135,7 +140,8 @@ function collect_stein_discrepancies(;particle_sizes, problem_function, dir_name
     end
 end
 
-function plot_discrep(filename, func; n_iter=nothing, title=nothing, label=nothing)
+function plot_discrep(filename, func; n_iter=nothing, title=nothing, 
+                      label=nothing)
     file = CSV.File(filename; header=false)
     df = DataFrame(file)
     n_tot = length(df[1])

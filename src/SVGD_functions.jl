@@ -6,7 +6,7 @@ using Zygote
 using Distances
 using PDMats
 
-export svgd_fit_with_int
+export svgd_fit
 export median_trick
 export kernel_grad_matrix
 export empirical_RKHS_norm
@@ -26,8 +26,16 @@ end
 
 grad(f,x,y) = gradient(f,x,y)[1]
 
-function svgd_fit_with_int(q, grad_logp ;n_iter=100, step_size=1,
-                          norm_method="standard", kernel_width=nothing)
+function svgd_fit(initial_dist, target_dist ;n_iter=100, step_size=1,
+                           norm_method="standard", kernel_width=nothing,
+                           n_particles=50)
+    p = rand(target_dist, n_particles)
+    grad_logp(x) = gradp(target_dist, x)
+    q_0 = rand( initial_dist, n_particles ) 
+    if length(size(q_0)) == 1
+        q_0 = reshape(q_0, (1, length(q_0)))
+    end
+    q = copy(q_0)
     dKL_steps = []
     if kernel_width isa Number
         kernel = TransformedKernel( 
@@ -51,11 +59,12 @@ function svgd_fit_with_int(q, grad_logp ;n_iter=100, step_size=1,
         # @time ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
         @time ϕ = calculate_phi(kernel, q, grad_logp)
         println("dKL time")
-        @time dKL = compute_phi_norm(q, kernel, grad_logp, norm_method=norm_method, ϕ=ϕ)
+        @time dKL = compute_phi_norm(q, kernel, grad_logp, 
+                                     norm_method=norm_method, ϕ=ϕ)
         q .+= step_size*ϕ
         push!(dKL_steps, dKL)
     end
-    return q, dKL_steps
+    return q_0, q, p, dKL_steps
 end
 
 function plot_iteration(q_0, q, i)
@@ -90,7 +99,8 @@ function calculate_phi_vectorized(kernel, q, grad_logp)
     end
 end
 
-function compute_phi_norm(q, kernel, grad_logp; norm_method="standard", ϕ=nothing)
+function compute_phi_norm(q, kernel, grad_logp; 
+                          norm_method="standard", ϕ=nothing)
     if norm_method == "standard"
         stein_discrep_biased(q, kernel, grad_logp)
     elseif norm_method == "unbiased"
