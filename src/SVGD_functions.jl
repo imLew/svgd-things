@@ -112,22 +112,22 @@ end
 
 function empirical_RKHS_norm(kernel::Kernel, q, ϕ)
     if size(q)[1] == 1
-        invquad(kernelpdmat(kernel, q), reshape(ϕ, length(ϕ)))
+        invquad(kernelpdmat(kernel, q), vec(ϕ))
     else
         # this first method tries to flatten the tensor equation
-        # invquad(flat_matrix_kernel_matrix(kernel, q), reshape(ϕ, length(ϕ)))
+        # invquad(flat_matrix_kernel_matrix(kernel, q), vec(ϕ))
         # the second method should be the straight forward case for a
         # kernel that is a scalar f(x) times identity matrix
         norm = 0
         for f in eachrow(ϕ)
-            norm += invquad(kernelpdmat(kernel, q), reshape(f, length(f)))
+            norm += invquad(kernelpdmat(kernel, q), vec(f))
         end
         return norm
     end
 end
 
 # function empirical_RKHS_norm(kernel::MatrixKernel, q, ϕ)
-#     invquad(flat_matrix_kernel_matrix(kernel, q), reshape(ϕ, length(ϕ)))
+#     invquad(flat_matrix_kernel_matrix(kernel, q), vec(ϕ))
 # end
 
 function unbiased_stein_discrep(q, kernel, grad_logp)
