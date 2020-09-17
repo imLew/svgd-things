@@ -14,16 +14,21 @@ export numerical_expectation
 export pdf_potential
 export logZ
 
-function expectation_V(q::Distribution, p::Distribution) 
-    numerical_expectation( q, x -> pdf_potential(p, x) )
+function expectation_V(initial_dist::Distribution, target_dist::Distribution) 
+    numerical_expectation( initial_dist, x -> pdf_potential(target_dist, x) )
 end
 
-function expectation_V(q::T, p::T) where T <: Union{Normal, MvNormal}
+function expectation_V(initial_dist::T, 
+                       target_dist::T) where T <: Union{Normal, MvNormal}
+    μ₀, Σ₀ = params(initial_dist)
+    μₚ, Σₚ = params(target_dist)
     if Σ₀ isa Number
+        # In the 1D case the parameter is the standard deviation but
+        # we need the variances
+        Σ₀ *= Σ₀
+        Σₚ *= Σₚ
         return 0.5 * ( Σ₀ / Σₚ +  (μ₀-μₚ)^2/Σₚ  )
     end
-    Σ₀ = get_pdmat(Σ₀)
-    Σₚ = get_pdmat(Σₚ)
     0.5 * (  tr(inv(Σₚ)*Σ₀) + invquad(Σₚ, μ₀-μₚ) )
 end
 
@@ -69,7 +74,7 @@ end
 
 function run_svgd_and_plot(initial_dist, target_dist, alg_params)
     H₀ = Distributions.entropy(initial_dist)
-    EV = numerical_expectation( initial_dist, x -> -logpdf(target_dist, x) )
+    EV = expectation_V( initial_dist, target_dist)
     
     @time q_0, q, p, rkhs_norm = svgd_fit(initial_dist, target_dist; 
                                                    alg_params...)	
