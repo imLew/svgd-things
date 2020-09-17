@@ -116,11 +116,13 @@ function empirical_RKHS_norm(kernel::Kernel, q, ϕ)
     else
         # this first method tries to flatten the tensor equation
         # invquad(flat_matrix_kernel_matrix(kernel, q), reshape(ϕ, length(ϕ)))
-        #
-        # this second approach is supposed to do the 1D case for each dimension
-        kmat = kernelpdmat.(kernel, eachrow(q))
-        @info size(kmat)
-        sum(invquad.(kmat, eachrow(ϕ)))
+        # the second method should be the straight forward case for a
+        # kernel that is a scalar f(x) times identity matrix
+        norm = 0
+        for (x, f) in zip(eachrow(q), eachrow(ϕ))
+            norm += invquad(kernelpdmat(kernel, x), reshape(f, length(f)))
+        end
+        return norm
     end
 end
 
