@@ -1,3 +1,4 @@
+using Plots
 using Distributions
 using LinearAlgebra
 using PDMats
