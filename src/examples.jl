@@ -4,15 +4,7 @@ using PDMats
 
 export plot_1D
 export plot_2D
-export gaussian_2d
 export run_svgd_and_plot
-
-export estimate_logZ
-export expectation_V_gaussian
-
-export numerical_expectation
-export pdf_potential
-export logZ
 
 function expectation_V(initial_dist::Distribution, target_dist::Distribution) 
     numerical_expectation( initial_dist, x -> pdf_potential(target_dist, x) )
@@ -58,7 +50,8 @@ function pdf_potential(d::Distribution, x)
 end
 
 function pdf_potential(d::Exponential, x)
-    λ = 1/params(d)[1] # Distribution.jl uses inverse param θ=1/λ (i.e. 1/θ e^{-x/θ})
+    # Distribution.jl uses inverse param θ=1/λ (i.e. 1/θ e^{-x/θ})
+    λ = 1/params(d)[1] 
     λ * x
 end
 

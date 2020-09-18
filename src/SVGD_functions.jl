@@ -119,8 +119,9 @@ function empirical_RKHS_norm(kernel::Kernel, q, ϕ)
         # the second method should be the straight forward case for a
         # kernel that is a scalar f(x) times identity matrix
         norm = 0
+        k_mat = kernelpdmat(kernel, q)
         for f in eachrow(ϕ)
-            norm += invquad(kernelpdmat(kernel, q), vec(f))
+            norm += invquad(k_mat, vec(f))
         end
         return norm
     end
