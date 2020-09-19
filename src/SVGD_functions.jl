@@ -1,4 +1,6 @@
+using ProgressMeter
 using Statistics
+using ValueHistories
 using KernelFunctions
 using LinearAlgebra
 using Random
@@ -26,17 +28,10 @@ end
 
 grad(f,x,y) = gradient(f,x,y)[1]
 
-function svgd_fit(initial_dist, target_dist ;n_iter=100, step_size=1,
+function svgd_fit(q, grad_logp ;n_iter=100, step_size=1,
                            norm_method="standard", kernel_width=nothing,
                            n_particles=50)
-    p = rand(target_dist, n_particles)
-    grad_logp(x) = gradp(target_dist, x)
-    q_0 = rand( initial_dist, n_particles ) 
-    if length(size(q_0)) == 1
-        q_0 = reshape(q_0, (1, length(q_0)))
-    end
-    q = copy(q_0)
-    dKL_steps = []
+    hist = MVHistory()
     if kernel_width isa Number
         kernel = TransformedKernel( 
                     SqExponentialKernel(), 
@@ -48,23 +43,21 @@ function svgd_fit(initial_dist, target_dist ;n_iter=100, step_size=1,
                     ScaleTransform( 1/sqrt( median_trick(q) ) )
                    )
     end
-    for i in 1:n_iter
-        @info "Step" i 
+    @showprogress for i in 1:n_iter
         if kernel_width == "median_trick"
             kernel.transform.s .= 1/sqrt(median_trick(q))
         elseif kernel_width == "median"
             kernel.transform.s .= 1/median(pairwise(Euclidean(), q, dims=2))
         end
-        println("phi time")
-        # @time ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
-        @time ϕ = calculate_phi(kernel, q, grad_logp)
-        println("dKL time")
-        @time dKL = compute_phi_norm(q, kernel, grad_logp, 
+        # ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
+        ϕ = calculate_phi(kernel, q, grad_logp)
+        dKL = compute_phi_norm(q, kernel, grad_logp, 
                                      norm_method=norm_method, ϕ=ϕ)
         q .+= step_size*ϕ
-        push!(dKL_steps, dKL)
+        push!(hist, :dKL, i, dKL)
+        push!(hist, :ϕ_norm, i, mean(norm(ϕ)))
     end
-    return q_0, q, p, dKL_steps
+    return q, hist
 end
 
 function plot_iteration(q_0, q, i)
