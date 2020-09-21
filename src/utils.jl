@@ -83,23 +83,6 @@ end
 
 # bayesian logistic regression
 # regression util functions
-function generate_samples(n, dist, ratio, n_dim=2)
-    n₁ = ceil(Int, ratio*n)
-    n₂ = ceil(Int, (1-ratio)*n)
-    x₁ = Random.randn(n₁,n_dim)
-    x₂ = Random.randn(n₂,n_dim) .+ dist
-    return [ones(n₁) x₁; zeros(n₂) x₂]
-end
-
-sigma(z,w) = 1 / (1 + exp(-1*sum(z'*w)))
-
-function logistic_grad_logp(data, w)
-    y = data[:,1]
-    x = data[:,2:end]
-    z = [ones(size(x)[1]) x]
-    sum((y .- sigma.(eachrow(z),[w])).*z, dims=1)'
-end
-
 function plot_classes(data, truth)
     # only 2D 
     x = traindata[:,2]
@@ -112,7 +95,3 @@ function plot_classes(data, truth)
     #TODO: color by average of prediction
 end
 
-function log_regr(X, w)
-    Z = [ones(size(X)[1]) X]
-    round.(Int, sigma.(eachrow(Z), [w]))
-end
