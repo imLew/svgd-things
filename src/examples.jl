@@ -6,22 +6,35 @@ using PDMats
 export plot_1D
 export plot_2D
 export run_svgd_and_plot
+export expectation_V
+export estimate_logZ
+export logZ
+export svgd_sample_from_known_dsitribution
+export plot_known_dists
+
+function svgd_sample_from_known_dsitribution(initial_dist, target_dist;
+                                             alg_params)
+    grad_logp(x) = gradp(target_dist, x)
+    q = rand( initial_dist, alg_params[:n_particles] ) 
+    if length(size(q)) == 1
+        q = reshape(q, (1, length(q)))
+    end
+    q, hist = svgd_fit( q, grad_logp; alg_params... )
+end
 
 function expectation_V(initial_dist::Distribution, target_dist::Distribution) 
     numerical_expectation( initial_dist, x -> pdf_potential(target_dist, x) )
 end
 
-function expectation_V(initial_dist::T, 
-                       target_dist::T) where T <: Union{Normal, MvNormal}
+function expectation_V(initial_dist::Normal, target_dist::Normal)
+    μ₀, σ₀ = params(initial_dist)
+    μₚ, σₚ = params(target_dist)
+    0.5 * ( σ₀^2 / σₚ^2 +  (μ₀-μₚ)^2/σₚ^2  )
+end
+
+function expectation_V(initial_dist::MvNormal, target_dist::MvNormal)
     μ₀, Σ₀ = params(initial_dist)
     μₚ, Σₚ = params(target_dist)
-    if Σ₀ isa Number
-        # In the 1D case the parameter is the standard deviation but
-        # we need the variances
-        Σ₀ *= Σ₀
-        Σₚ *= Σₚ
-        return 0.5 * ( Σ₀ / Σₚ +  (μ₀-μₚ)^2/Σₚ  )
-    end
     0.5 * (  tr(inv(Σₚ)*Σ₀) + invquad(Σₚ, μ₀-μₚ) )
 end
 
@@ -70,19 +83,19 @@ function run_svgd_and_plot(initial_dist, target_dist, alg_params)
     H₀ = Distributions.entropy(initial_dist)
     EV = expectation_V( initial_dist, target_dist)
     
-    @time q_0, q, p, rkhs_norm = svgd_fit(initial_dist, target_dist; 
+    @time q_0, q, p, dKL = svgd_fit(initial_dist, target_dist; 
                                                    alg_params...)	
 
     @info "empirical logZ" estimate_logZ(H₀, EV, 
-                                         alg_params[:step_size]*sum(rkhs_norm))
+                                         alg_params[:step_size]*sum(dKL))
     @info "true logZ" logZ(target_dist)
 
     plot_results(initial_dist, target_dist, alg_params, H₀, 
-                 logZ(target_dist), EV, rkhs_norm, q)
+                 logZ(target_dist), EV, dKL, q)
 end
 
-function plot_results(initial_dist, target_dist, alg_params, 
-                      H₀, logZ, EV, rkhs_norm, q)
+function plot_known_dists(initial_dist, target_dist, alg_params, 
+                      H₀, logZ, EV, dKL, q)
     # caption="""n_particles=$n_particles; n_iter=$n_iter; 
     #         norm_method=$norm_method; kernel_width=$kernel_width; 
     #         step_size=$step_size"""
@@ -95,7 +108,7 @@ function plot_results(initial_dist, target_dist, alg_params,
     title = ""
     title_plot = plot(grid=false,annotation=(0.5,0.5,title),
                       ticks=([]),fgborder=:white,subplot=1, framestyle=:none);
-    int_plot, norm_plot = plot_integration(H₀, logZ, EV, rkhs_norm, 
+    int_plot, norm_plot = plot_integration(H₀, logZ, EV, dKL, 
                                            alg_params[:step_size])
 
     dim = size(q)[1]
@@ -113,9 +126,9 @@ function plot_results(initial_dist, target_dist, alg_params,
         #     dist_plot = plot_3D(initial_dist, target_dist, q)
         end
     layout = @layout [t{0.1h} ; i ; a b; c{0.1h}]
-    display(plot(title_plot, int_plot, norm_plot, dist_plot, 
-                  caption_plot, layout=layout, size=(1400,800), 
-                  legend=:topleft));
+    plot(title_plot, int_plot, norm_plot, dist_plot, 
+         caption_plot, layout=layout, size=(1400,800), 
+         legend=:topleft);
     end
 end
 
@@ -124,20 +137,20 @@ function plot_2D(initial_dist, target_dist, q)
                         labels="q" , title="particles");
     min_q = minimum(q)
     max_q = maximum(q)
-    t = min_q-0.2*abs(min_q):0.05:max_q+0.2*abs(max_q)
+    t = min_q-0.5*abs(min_q):0.05:max_q+0.5*abs(max_q)
     contour!(t, t, (x,y)->pdf(target_dist, [x, y]), labels="p")
     contour!(t, t, (x,y)->pdf(initial_dist, [x, y]), labels="q₀")
     return dist_plot
 end
 
-function plot_integration(H₀, logZ, EV, rkhs_norm, step_size)
+function plot_integration(H₀, logZ, EV, dKL, step_size)
     int_plot = plot(estimate_logZ.([H₀], [EV],
-                    step_size*cumsum(rkhs_norm)), title="log Z = $logZ",
+                    step_size*cumsum(dKL)), title="log Z = $logZ",
                     labels="estimate for log Z");
 
     hline!([logZ], labels="analytical value log Z");
 
-    norm_plot = plot(-step_size*rkhs_norm, labels="RKHS norm", title="dKL/dt");
+    norm_plot = plot(-step_size*dKL, labels="RKHS norm", title="dKL/dt");
     return int_plot, norm_plot
 end
 
@@ -154,52 +167,7 @@ function plot_1D(initial_dist, target_dist, q)
     return dist_plot
 end
 
-
 ## Sampling
-function exponential_1D(;
-                    n_particles=100,
-                    step_size=1,
-                    n_iter=500,
-                    λ_initial = 5,
-                    λ_target = 1,
-                    norm_method="standard",
-                    kernel_width=nothing
-                   )
-    target =  Exponential(1/λ_target)
-    p = rand(target, n_particles)
-    grad_logp(x) = gradp(target, x)
-    initial_dist = Exponential(1/λ_initial)
-    q_0 = rand(initial_dist, (1, n_particles) )
-    q = copy(q_0)
-    @time q, dkl = svgd_fit(q, grad_logp, n_iter=n_iter, 
-                                     step_size=step_size, norm_method=norm_method,
-                                    kernel_width=kernel_width)	
-    q, q_0, p, dkl
-end
-
-function gaussian_1d(
-                    n_particles=100,
-                    step_size=1,
-                    n_iter=500,
-                    μ_initial = 0,
-                    Σ_initial = 0.5,
-                    μ_target = 0,
-                    Σ_target = 1,
-                    norm_method="standard",
-                    kernel_width=nothing
-                   )
-    target =  Normal(μ_target, sqrt( Σ_target ))
-    p = rand(target, n_particles)
-    grad_logp(x) = gradp(target, x)
-    initial_dist = Normal(μ_initial, sqrt(Σ_initial))
-    q_0 = rand(initial_dist, (1, n_particles) )
-    q = copy(q_0)
-    @time q, dkl = svgd_fit(q, grad_logp, n_iter=n_iter, 
-                                     step_size=step_size, norm_method=norm_method,
-                                    kernel_width=kernel_width)	
-    q, q_0, p, dkl
-end
-
 function gaussian_1d_mixture(;n_particles=100, step_size=1, n_iter=500,
                                 μ₁ = -2, Σ₁ = 1, μ₂ = 2, Σ₂ = 1,
                                norm_method="standard")
@@ -214,23 +182,6 @@ function gaussian_1d_mixture(;n_particles=100, step_size=1, n_iter=500,
     q, q_0, p, dkl
 end
 
-function gaussian_2d(;n_particles=100, step_size=0.05, n_iter=500,
-                     μ_target=[-2, 8], Σ_target=[9. 0.5; 0.5 1.],
-                     μ_initial = [0, 0], Σ_initial = [1. 0.; 0. 1.],
-                    norm_method="standard")
-    target = MvNormal(μ_target, Σ_target)
-    p = rand(target, n_particles)
-    grad_logp(x) = gradp(target, x)
-    initial = MvNormal(μ_initial, Σ_initial)
-    q_0 = rand(initial, n_particles)
-    q = copy(q_0)
-    q, dKL = svgd_fit(q, grad_logp, n_iter=n_iter, 
-                               step_size=step_size,
-                               norm_method=norm_method)
-    return q, q_0, p, dKL
-end
-
-# TODO: fix this function
 function gaussian2d_mixture()
     n_particles = 50
     e = 1
@@ -258,7 +209,6 @@ function gaussian2d_mixture()
     plots.plot(dkl)
 end
 
-# TODO: fix this function
 function gaussian3d_mixture()
     n_particles = 50
     e = 1
@@ -267,16 +217,17 @@ function gaussian3d_mixture()
 
     # target
     μ₁ = [5, 3, 0.]
-    Σ₁ = [9. 0.5 1; 0.5 8 2;1 2 1.]  # MvNormal can deal with Int type means but not covariances
+    Σ₁ = [9. 0.5 1; 0.5 8 2;1 2 1.]  
     μ₂ = [7, 0, 1]
-    Σ₂ = [1. 0 0; 0 1 0; 0 0 1.]  # MvNormal can deal with Int type means but not covariances
-    target = MixtureModel(MvNormal[ MvNormal(μ₁, Σ₁), MvNormal(μ₂, Σ₂) ], [0.5, 0.5])
+    Σ₂ = [1. 0 0; 0 1 0; 0 0 1.]  
+    target = MixtureModel(MvNormal[ MvNormal(μ₁, Σ₁), 
+                                   MvNormal(μ₂, Σ₂) ], [0.5, 0.5])
     p = rand(target, n_particles)
     grad_logp(x) = gradp(target, x)
 
     # initial
     μ = [-2, -2, -2]
-    sig = [1. 0 0; 0 1 0; 0 0 1.]  # MvNormal can deal with Int type means but not covariances
+    sig = [1. 0 0; 0 1 0; 0 0 1.]  
     initial = MvNormal(μ, sig)
     q_0 = rand(initial, n_particles)
     q = copy(q_0)
