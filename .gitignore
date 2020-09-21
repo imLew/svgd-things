@@ -9,3 +9,9 @@
 *.synctex.gz
 
 *.f*
+
+_*
+
+plots
+
+data
