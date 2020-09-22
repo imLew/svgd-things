@@ -45,7 +45,7 @@ function run_g2g(;problem_params, alg_params, n_runs)
         plot_known_dists(initial_dist, target_dist, alg_params, H₀, 
                          true_logZ, EV, get(hist,:dKL)[2], q)
         fn = savename( merge(problem_params, alg_params, Dict(:run_no => i) ))
-        mkpath(plotsdir(DIRNAME))
+        mkpath(plotsdir("experiments", DIRNAME))
         savefig( plotsdir(DIRNAME, fn * ".html") )
         push!(svgd_results, hist)
         push!(estimation_results, est_logZ)
@@ -102,5 +102,5 @@ for (i, pp) ∈ enumerate(dict_list(PROBLEM_PARAMS_1D)),
             alg_params=ap,
             n_runs=1
             )
-    break
+    # break
 end
