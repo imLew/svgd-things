@@ -12,7 +12,7 @@ export logZ
 export svgd_sample_from_known_dsitribution
 export plot_known_dists
 
-function svgd_sample_from_known_dsitribution(initial_dist, target_dist;
+function svgd_sample_from_known_distribution(initial_dist, target_dist;
                                              alg_params)
     grad_logp(x) = gradp(target_dist, x)
     q = rand( initial_dist, alg_params[:n_particles] ) 
