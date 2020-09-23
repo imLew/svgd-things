@@ -36,28 +36,28 @@ function samplepower_posterior(logπ, n_dim, nSamples) # From AdvancedHMC.jl REA
 end
 
 struct ThermoIntegration 
-    nSamples::Int
-    nIntSteps::Int
-    schedule::Vector{Float64}
+    nSamples::Int # Number of samples per integration steps
+    nIntSteps::Int # Number of integration steps 
+    schedule::Vector{Float64} # Integration schedule
 end
 
-function ThermoIntegration(; nSamples = 2000, nSteps = 30)
-    ThermoIntegration(nSamples, nSteps, ((1:nSteps)./nSteps).^5)
+function ThermoIntegration(; nSamples = 2000, nSteps = 30, schedule = ((1:nSteps)./nSteps).^5)
+    ThermoIntegration(nSamples, nSteps, schedule)
 end
 
 function (alg::ThermoIntegration)(loglikelihood, logprior, n_dim; kwargs...)
-    function temperedlogπ(t, loglikelihood, logprior)
+    function temperedlogπ(t, loglikelihood, logprior) # Create the tempered log-joint
         return function logπ(x)
             t * loglikelihood(x) + logprior(x)
         end
     end
     logZs = zeros(Float64, alg.nIntSteps)
-    for (i, t) in enumerate(alg.schedule)
+    for (i, t) in enumerate(alg.schedule) # Loop over all temperatures
         @info "Step $i/$(alg.nIntSteps)"
-        θs = samplepower_posterior(temperedlogπ(t, loglikelihood, logprior), n_dim, alg.nSamples)
-        logZs[i] = sum(loglikelihood, θs) / alg.nSamples 
+        θs = samplepower_posterior(temperedlogπ(t, loglikelihood, logprior), n_dim, alg.nSamples) # Get samples from power posterior via NUTS
+        logZs[i] = sum(loglikelihood, θs) / alg.nSamples # Compute the expectation of the log-likelihood given the samples
     end
-    return trapz(alg.schedule, logZs)
+    return trapz(alg.schedule, logZs) # Compute the integral using trapezoids
 end
 
 n_dim = 5
