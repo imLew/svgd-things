@@ -30,7 +30,7 @@ function samplepower_posterior(logπ, n_dim, nSamples) # From AdvancedHMC.jl REA
     # Run the sampler to draw samples from the specified Gaussian, where
     #   - `samples` will store the samples
     #   - `stats` will store diagnostic statistics for each sample
-    samples, stats = sample(hamiltonian, proposal, initial_θ, n_samples, adaptor, n_adapts; progress=true)
+    samples, stats = sample(hamiltonian, proposal, initial_θ, nSamples, adaptor, n_adapts; progress=false)
 
     return samples
 end
@@ -71,6 +71,6 @@ loglikelihood(θ) = sum(logpdf.(Normal.(y, 0.1), x * θ))
 logprior(θ_init)
 loglikelihood(θ_init)
 
-alg = ThermoIntegration()
+alg = ThermoIntegration(nSamples = 3000)
 samplepower_posterior(x->loglikelihood(x) + logprior(x), n_dim, alg.nSamples)
 val = alg(logprior, loglikelihood, n_dim)
