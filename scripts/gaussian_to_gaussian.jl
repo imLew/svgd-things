@@ -46,8 +46,8 @@ function run_g2g(;problem_params, alg_params, n_runs)
                          true_logZ, EV, get(hist,:dKL)[2], q)
         fn = savename( merge(problem_params, alg_params, Dict(:run_no => i) ))
         mkpath(plotsdir("experiments", DIRNAME))
-        savefig( plotsdir(DIRNAME, fn * ".html") )
-        push!(svgd_results, hist)
+        savefig( plotsdir("experiments", DIRNAME, fn * ".html") )
+        push!(svgd_results, (hist, q))
         push!(estimation_results, est_logZ)
     end
 
