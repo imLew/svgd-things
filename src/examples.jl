@@ -11,6 +11,7 @@ export estimate_logZ
 export logZ
 export svgd_sample_from_known_dsitribution
 export plot_known_dists
+export numerical_expectation
 
 function svgd_sample_from_known_dsitribution(initial_dist, target_dist;
                                              alg_params)
@@ -29,13 +30,13 @@ end
 function expectation_V(initial_dist::Normal, target_dist::Normal)
     μ₀, σ₀ = params(initial_dist)
     μₚ, σₚ = params(target_dist)
-    0.5 * ( σ₀^2 / σₚ^2 +  (μ₀-μₚ)^2/σₚ^2  )
+    0.5 * ( σ₀^2 / σₚ^2 + (μ₀-μₚ)^2/σₚ^2  )
 end
 
 function expectation_V(initial_dist::MvNormal, target_dist::MvNormal)
     μ₀, Σ₀ = params(initial_dist)
     μₚ, Σₚ = params(target_dist)
-    0.5 * (  tr(inv(Σₚ)*Σ₀) + invquad(Σₚ, μ₀-μₚ) )
+    0.5 * ( tr(inv(Σₚ)*Σ₀) + invquad(Σₚ, μ₀-μₚ) )
 end
 
 function estimate_logZ(H0, EV, int_KL)
@@ -79,20 +80,20 @@ function pdf_potential(d::MvNormal, x)
     2 \ invquad(Σ, x-μ)
 end
 
-function run_svgd_and_plot(initial_dist, target_dist, alg_params)
-    H₀ = Distributions.entropy(initial_dist)
-    EV = expectation_V( initial_dist, target_dist)
+# function run_svgd_and_plot(initial_dist, target_dist, alg_params)
+#     H₀ = Distributions.entropy(initial_dist)
+#     EV = expectation_V( initial_dist, target_dist)
     
-    @time q_0, q, p, dKL = svgd_fit(initial_dist, target_dist; 
-                                                   alg_params...)	
+#     @time q_0, q, p, dKL = svgd_fit(initial_dist, target_dist; 
+#                                                    alg_params...)	
 
-    @info "empirical logZ" estimate_logZ(H₀, EV, 
-                                         alg_params[:step_size]*sum(dKL))
-    @info "true logZ" logZ(target_dist)
+#     @info "empirical logZ" estimate_logZ(H₀, EV, 
+#                                          alg_params[:step_size]*sum(dKL))
+#     @info "true logZ" logZ(target_dist)
 
-    plot_results(initial_dist, target_dist, alg_params, H₀, 
-                 logZ(target_dist), EV, dKL, q)
-end
+#     plot_results(initial_dist, target_dist, alg_params, H₀, 
+#                  logZ(target_dist), EV, dKL, q)
+# end
 
 function plot_known_dists(initial_dist, target_dist, alg_params, 
                       H₀, logZ, EV, dKL, q)
@@ -178,7 +179,7 @@ function gaussian_1d_mixture(;n_particles=100, step_size=1, n_iter=500,
     q_0 = rand(initial_dist, (1, n_particles) )
     q = copy(q_0)
     @time q, dkl = svgd_fit(q, grad_logp, n_iter=n_iter, 
-                                           step_size=step_size, norm_method=norm_method)	
+                            step_size=step_size, norm_method=norm_method)	
     q, q_0, p, dkl
 end
 
@@ -190,16 +191,17 @@ function gaussian2d_mixture()
 
     # target
     μ₁ = [5, 3]
-    σ₁ = [9. 0.5; 0.5 1.]  # mvnormal can deal with int type means but not covariances
+    σ₁ = [9. 0.5; 0.5 1.]  
     μ₂ = [7, 0]
-    σ₂ = [1. 0.1; 0.1 7.]  # mvnormal can deal with int type means but not covariances
-    target = MixtureModel(MvNormal[ MvNormal(μ₁, σ₁), MvNormal(μ₂, σ₂) ], [0.5, 0.5])
+    σ₂ = [1. 0.1; 0.1 7.]  
+    target = MixtureModel(
+                    MvNormal[ MvNormal(μ₁, σ₁), MvNormal(μ₂, σ₂) ], [0.5, 0.5])
     p = rand(target, n_particles)
     tglp(x) = gradp(target, x)
 
     # initial
     μ = [0, 0]
-    sig = [1. 0.; 0. 1.]  # MvNormal can deal with int type means but not covariances
+    sig = [1. 0.; 0. 1.]  
     initial = MvNormal(μ, sig)
     q_0 = rand(initial, n_particles)
     q = copy(q_0)
@@ -221,7 +223,7 @@ function gaussian3d_mixture()
     μ₂ = [7, 0, 1]
     Σ₂ = [1. 0 0; 0 1 0; 0 0 1.]  
     target = MixtureModel(MvNormal[ MvNormal(μ₁, Σ₁), 
-                                   MvNormal(μ₂, Σ₂) ], [0.5, 0.5])
+                                    MvNormal(μ₂, Σ₂) ], [0.5, 0.5])
     p = rand(target, n_particles)
     grad_logp(x) = gradp(target, x)
 
@@ -235,27 +237,4 @@ function gaussian3d_mixture()
     @time q = svgd_fit(q, grad_logp, n_iter=400, step_size=e)	
 
     plot_svgd_results(q_0, q, p)
-end
-
-## model fitting
-# TODO: fix this function
-function regression2d() 
-    n_samples = 100
-    dist_samples = 3
-    ratio = 0.5
-    n_iter = 100
-    step_size = 0.1
-    n_dim = 2
-    data = generate_samples(n_samples, dist_samples, ratio, n_dim)
-
-    q = randn(n_dim+1, n_samples)
-    q0 = copy(q)
-    grad_logp(w) = logistic_grad_logp(data, w)
-
-    q = svgd_fit(q, grad_logp, n_iter=n_iter, step_size=step_size)
-
-    traindata = copy(data)
-    traindata[:, 1] = log_regr(data[:,2:end], mean(q, dims=2))
-
-    plot_classes(traindata, data[:,1])
 end
