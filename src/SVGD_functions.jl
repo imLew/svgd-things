@@ -51,10 +51,16 @@ function svgd_fit(q, grad_logp ;n_iter=100, step_size=1,
         end
         # ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
         ϕ = calculate_phi(kernel, q, grad_logp)
-        dKL = compute_phi_norm(q, kernel, grad_logp, 
-                                     norm_method=norm_method, ϕ=ϕ)
+        dKL_rkhs = compute_phi_norm(q, kernel, grad_logp, 
+                                     norm_method="RKHS_norm", ϕ=ϕ)
+        dKL_unbiased = compute_phi_norm(q, kernel, grad_logp, 
+                                     norm_method="unbiased", ϕ=ϕ)
+        dKL_stein_discrep = compute_phi_norm(q, kernel, grad_logp, 
+                                     norm_method="standard", ϕ=ϕ)
         q .+= step_size*ϕ
-        push!(hist, :dKL, i, dKL)
+        push!(hist, :dKL_unbiased, i, dKL_unbiased)
+        push!(hist, :dKL_stein_discrep, i, dKL_stein_discrep)
+        push!(hist, :dKL_rkhs, i, dKL_rkhs)
         push!(hist, :ϕ_norm, i, mean(norm(ϕ)))
     end
     return q, hist
