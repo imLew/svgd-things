@@ -65,7 +65,7 @@ ALG_PARAMS = Dict(
     :n_iter => [ 50, 100 ],
     :n_particles => [ 50, 100],
     :norm_method => "RKHS_norm",
-    :kernel_width => [ "median_trick", 0.5]
+    :kernel_width => ["median_trick"]
     )
 
 PROBLEM_PARAMS_1D = Dict(
