@@ -11,7 +11,7 @@ function gaussian_to_gaussian(;μ₀::Vector, μₚ::Vector, Σ₀::Matrix, Σ�
                               alg_params)
     initial_dist = MvNormal(μ₀, Σ₀)
     target_dist = MvNormal(μₚ, Σₚ)
-    q, hist = svgd_sample_from_known_dsitribution( initial_dist, target_dist; 
+    q, hist = svgd_sample_from_known_distribution( initial_dist, target_dist; 
                                                  alg_params=alg_params )
     return initial_dist, target_dist, q, hist
 end
@@ -20,7 +20,7 @@ function gaussian_to_gaussian(;μ₀::Number, μₚ::Number, σ₀::Number, σ�
                               alg_params)
     initial_dist = Normal(μ₀, σ₀)
     target_dist = Normal(μₚ, σₚ)
-    q, hist = svgd_sample_from_known_dsitribution( initial_dist, target_dist; 
+    q, hist = svgd_sample_from_known_distribution( initial_dist, target_dist; 
                                                  alg_params=alg_params )
     return initial_dist, target_dist, q, hist
 end
