@@ -1,10 +1,10 @@
 #!/usr/bin/env julia
 #$ -binding linear:16 # request cpus 
-#$ -N ex set consistent base name for output and error file (allows for easy deletion alias)
-#$ -q all.q don't fill the qlogin queue (can some add why and when to use?)
-#$ -cwd change working directory (to current)
-#$ -V provide environment variables
-#$ -t 1-100 start 100 instances: from 1 to 100
+#$ -N gauss_to_gauss
+#$ -q all.q 
+#$ -cwd 
+#$ -V 
+#$ -t 1-48
 using DrWatson
 @quickactivate
 
@@ -92,7 +92,14 @@ PROBLEM_PARAMS_2D = Dict(
 PROBLEM_PARAMS = PROBLEM_PARAMS_2D
 
 if length(ARGS) == 0 && haskey(ENV, "SGE_TASK_ID")
-    dict_o_dicts = BSON.load(BSON.load("tmp_dict_names.bson")[ENV["SGE_TASK_ID"]])
+    using BSON
+    using Distributions
+    using SVGD
+    dict_o_dicts = BSON.load(
+                    BSON.load(
+                          projectdir("tmp_dict_names.bson")
+                             )[ENV["SGE_TASK_ID"]]
+                   )
     @info "Sampling problem: $(dict_o_dicts[:problem_params])"
     @info "Alg parameters: $(dict_o_dicts[:alg_params])"
     @time run_g2g(problem_params=dict_o_dicts[:problem_params],
@@ -117,8 +124,7 @@ elseif ARGS[1] == "run"
     using BSON
     using Distributions
     using SVGD
-    if endswith(".bson")(ARGS[2])
-        dict_o_dicts = BSON.load(ARGS[2])
+    dict_o_dicts = BSON.load(ARGS[2])
     @info "Sampling problem: $(dict_o_dicts[:problem_params])"
     @info "Alg parameters: $(dict_o_dicts[:alg_params])"
     @time run_g2g(problem_params=dict_o_dicts[:problem_params],
