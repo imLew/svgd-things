@@ -1,8 +1,6 @@
 using DrWatson
-using LinearAlgebra
-using DrWatson
 using BSON
-using ValueHistories
+using LinearAlgebra
 using Distributions
 
 global DIRNAME = "bayesian_logistic_regression"
