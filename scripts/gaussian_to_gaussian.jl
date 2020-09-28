@@ -96,9 +96,11 @@ if length(ARGS) == 0 && haskey(ENV, "SGE_TASK_ID")
     using Distributions
     using SVGD
     dict_o_dicts = BSON.load(
-                    BSON.load(
-                          projectdir("tmp_dict_names.bson")
-                             )[ENV["SGE_TASK_ID"]]
+                    projectdir("_research","tmp",
+                        BSON.load(
+                              projectdir("tmp_dict_names.bson")
+                        )[ENV["SGE_TASK_ID"]][1]
+                    )
                    )
     @info "Sampling problem: $(dict_o_dicts[:problem_params])"
     @info "Alg parameters: $(dict_o_dicts[:alg_params])"
