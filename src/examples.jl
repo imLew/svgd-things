@@ -9,7 +9,7 @@ export run_svgd_and_plot
 export expectation_V
 export estimate_logZ
 export logZ
-export svgd_sample_from_known_dsitribution
+export svgd_sample_from_known_distribution
 export plot_known_dists
 export numerical_expectation
 
