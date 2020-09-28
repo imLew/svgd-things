@@ -9,7 +9,7 @@ using DrWatson
 quickactivate("/home/theogf/SVGD-integration/svgd-things/", "SVGD")
 
 global DIRNAME = "gaussian_to_gaussian"
-global N_RUNS = 1
+global N_RUNS = 20
 
 ### local util functions
 function gaussian_to_gaussian(;μ₀::Vector, μₚ::Vector, Σ₀::Matrix, Σₚ::Matrix,
