@@ -4,9 +4,9 @@
 #$ -q all.q 
 #$ -cwd 
 #$ -V 
-#$ -t 1-48
+#$ -t 1-576
 using DrWatson
-@quickactivate
+quickactivate("/home/theogf/SVGD-integration/svgd-things/", "SVGD")
 
 global DIRNAME = "gaussian_to_gaussian"
 global N_RUNS = 1
@@ -74,18 +74,19 @@ function run_g2g(;problem_params, alg_params, n_runs)
 end
 
 ALG_PARAMS = Dict(
-    :step_size => [0.05, 0.01, 0.005 ],
-    :n_iter => [ 5, 10 ],
-    :n_particles => [ 50, 100],
+    :step_size => [0.05, 0.01, @onlyif(:n_iter >= 5000, [0.005, 0.001]) ],
+    :n_iter => [ @onlyif(:n_particles<=100, [1000, 2000]), 
+                 @onlyif(:n_particles>=100,[5000, 10000, 20000]) ],
+    :n_particles => [ 50, 100, 200, 500, 1000, 2000],
     :norm_method => "RKHS_norm",
     :kernel_width => "median_trick"
 )
 
 PROBLEM_PARAMS_2D = Dict(
     :μ₀ => [[-5, -2.],[0., 0]],
-    :μₚ => [[0,0.]],
-    :Σ₀ => [[1. 0; 0 1.],],
-    :Σₚ => [[1. 0.5; 0.5 1],[0.2 0.1; 0.1 0.2]],
+    :μₚ => [[0,0.],[9,9]],
+    :Σ₀ => [[1. 0; 0 1.],[2 2; 2 5]],
+    :Σₚ => [[1. 0.5; 0.5 1],[2 0.1; 0.1 2]],
 )
 
 # TODO add params for a high dimensional gaussian
