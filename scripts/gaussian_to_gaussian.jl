@@ -4,7 +4,7 @@
 #$ -q all.q 
 #$ -cwd 
 #$ -V 
-#$ -t 1-180
+#$ -t 1-96
 using DrWatson
 quickactivate(ENV["JULIA_ENVIRONMENT"], "SVGD")
 
@@ -74,9 +74,9 @@ function run_g2g(;problem_params, alg_params, n_runs)
 end
 
 ALG_PARAMS = Dict(
-    :n_iter => [2000, 5000, @onlyif(:n_particles<500, 10000)],
+    :n_iter => [2000, 5000],
     :step_size => [0.05, 0.01, 0.005],
-    :n_particles => [ 50, 100, 200, 500, 1000],
+    :n_particles => [ 50, 100, 200, 500],
     :norm_method => "RKHS_norm",
     :kernel_width => "median_trick"
 )
