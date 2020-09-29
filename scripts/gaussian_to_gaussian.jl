@@ -9,7 +9,7 @@ using DrWatson
 quickactivate(ENV["JULIA_ENVIRONMENT"], "SVGD")
 
 global DIRNAME = "gaussian_to_gaussian"
-global N_RUNS = 5
+global N_RUNS = 1
 
 ### local util functions
 function gaussian_to_gaussian(;μ₀::Vector, μₚ::Vector, Σ₀::Matrix, Σₚ::Matrix,
