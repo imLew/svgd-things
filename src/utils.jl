@@ -80,18 +80,3 @@ end
 #     h = 1/k.transform.s[1]^2
 #     -2/h * (x-y) * exp(-h\norm(x-y))
 # end
-
-# bayesian logistic regression
-# regression util functions
-function plot_classes(data, truth)
-    # only 2D 
-    x = traindata[:,2]
-    y = traindata[:,3]
-    l = traindata[:,1]
-    t = data[:,1]
-    t.!=y
-    Plots.scatter([x[l.==t], x[l.!=t]], [y[l.==t], y[l.!=t]], 
-                  label=["correct" "incorrect"])
-    #TODO: color by average of prediction
-end
-
