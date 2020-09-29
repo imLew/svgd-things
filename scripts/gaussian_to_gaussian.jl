@@ -9,7 +9,7 @@ using DrWatson
 quickactivate(ENV["JULIA_ENVIRONMENT"], "SVGD")
 
 global DIRNAME = "gaussian_to_gaussian"
-global N_RUNS = 20
+global N_RUNS = 10
 
 ### local util functions
 function gaussian_to_gaussian(;μ₀::Vector, μₚ::Vector, Σ₀::Matrix, Σₚ::Matrix,
@@ -74,9 +74,9 @@ function run_g2g(;problem_params, alg_params, n_runs)
 end
 
 ALG_PARAMS = Dict(
-    :n_iter => [5000, 10000, 20000],
-    :step_size => [0.05, 0.01, 0.005, 0.001],
-    :n_particles => [ 50, 100, 200, 500, 1000, 2000],
+    :n_iter => [2000, 5000, @onlyif(:n_particles<500, 10000)],
+    :step_size => [0.05, 0.01, 0.005],
+    :n_particles => [ 50, 100, 200, 500, 1000],
     :norm_method => "RKHS_norm",
     :kernel_width => "median_trick"
 )
