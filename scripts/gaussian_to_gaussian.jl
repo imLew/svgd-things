@@ -4,9 +4,9 @@
 #$ -q all.q 
 #$ -cwd 
 #$ -V 
-#$ -t 1-576
+#$ -t 1-1152
 using DrWatson
-quickactivate("/home/theogf/SVGD-integration/svgd-things/", "SVGD")
+quickactivate(ENV["JULIA_ENVIRONMENT"], "SVGD")
 
 global DIRNAME = "gaussian_to_gaussian"
 global N_RUNS = 20
@@ -74,9 +74,8 @@ function run_g2g(;problem_params, alg_params, n_runs)
 end
 
 ALG_PARAMS = Dict(
-    :step_size => [0.05, 0.01, @onlyif(:n_iter >= 5000, [0.005, 0.001]) ],
-    :n_iter => [ @onlyif(:n_particles<=100, [1000, 2000]), 
-                 @onlyif(:n_particles>=100,[5000, 10000, 20000]) ],
+    :n_iter => [5000, 10000, 20000],
+    :step_size => [0.05, 0.01, 0.005, 0.001],
     :n_particles => [ 50, 100, 200, 500, 1000, 2000],
     :norm_method => "RKHS_norm",
     :kernel_width => "median_trick"
@@ -93,6 +92,9 @@ PROBLEM_PARAMS_2D = Dict(
 PROBLEM_PARAMS = PROBLEM_PARAMS_2D
 
 if length(ARGS) == 0 && haskey(ENV, "SGE_TASK_ID")
+# for running in a job array on the gridengine cluster;
+# assumes dictionaries with parameters have been created in _research/tmp
+# and that they are indexed in tmp_dict_names.bson
     using BSON
     using Distributions
     using SVGD
