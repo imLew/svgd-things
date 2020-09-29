@@ -4,12 +4,12 @@
 #$ -q all.q 
 #$ -cwd 
 #$ -V 
-#$ -t 1-1152
+#$ -t 1-180
 using DrWatson
 quickactivate(ENV["JULIA_ENVIRONMENT"], "SVGD")
 
 global DIRNAME = "gaussian_to_gaussian"
-global N_RUNS = 10
+global N_RUNS = 5
 
 ### local util functions
 function gaussian_to_gaussian(;μ₀::Vector, μₚ::Vector, Σ₀::Matrix, Σₚ::Matrix,
@@ -82,9 +82,9 @@ ALG_PARAMS = Dict(
 )
 
 PROBLEM_PARAMS_2D = Dict(
-    :μ₀ => [[-5, -2.],[0., 0]],
-    :μₚ => [[0,0.],[9,9]],
-    :Σ₀ => [[1. 0; 0 1.],[2 2; 2 5]],
+    :μ₀ => [[0., 0]],
+    :μₚ => [[0,0.],[4,5]],
+    :Σ₀ => [[1. 0; 0 1.]],
     :Σₚ => [[1. 0.5; 0.5 1],[2 0.1; 0.1 2]],
 )
 
