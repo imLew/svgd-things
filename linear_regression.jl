@@ -2,6 +2,7 @@ using DrWatson
 using BSON
 using Distributions
 using DataFrames
+using LinearAlgebra
 
 using SVGD
 
@@ -34,7 +35,7 @@ function Base.iterate(d::RegressionData, state)
         return nothing
     end
 end
-y(model::RegressionModel, x) = sum(model.w .* model.ϕ(x))
+y(model::RegressionModel, x) = dot(model.w, model.ϕ(x))
 
 function generate_samples(;model::RegressionModel, n_samples=100, 
                           sample_range=[-10, 10])
@@ -53,9 +54,9 @@ function log_likelihood(data::RegressionData, model::RegressionModel)
     length(data)/2 * log(model.β/(2π)) - model.β * E(data, model)
 end
 
-function grad_logp(D::RegressionData, model::RegressionModel) 
-    model.β * sum( ( D.t .- y.([model], D.x) ) .* model.ϕ.(D.x) )
-end
+# function grad_logp(D::RegressionData, model::RegressionModel) 
+#     model.β * sum( ( D.t .- y.([model], D.x) ) .* model.ϕ.(D.x) )
+# end
 
 function fit_linear_regression(problem_params, alg_params, D) 
     # we use the prior as the initial distribution of the particles
@@ -63,10 +64,10 @@ function fit_linear_regression(problem_params, alg_params, D)
                             problem_params[:Σ_prior])
 
     q = rand(initial_dist, alg_params[:n_particles])
-    function grad_logp(q::Array) 
-        model = RegressionModel(problem_params[:ϕ], q, problem_params[:true_β])
-        grad_log_prior = 0 #TODO add prior
-        grad_logp(D, model) .+ grad_log_prior
+    function grad_logp(w) 
+        model = RegressionModel(problem_params[:ϕ], w, problem_params[:true_β])
+        # grad_log_prior = 0 #TODO add prior
+        model.β * sum( ( D.t .- y.([model], D.x) ) .* model.ϕ.(D.x) )
     end
 
     q, hist = svgd_fit(q, grad_logp; alg_params...)
@@ -121,11 +122,11 @@ alg_params = Dict(
 )
 
 problem_params = Dict(
-    :n_samples => 10,
+    :n_samples => 4,
     :sample_range => [-3, 3],
     :true_ϕ => x -> [x, x^2, x^4],
     :true_w => [20, -17, π],
-    :true_β => 2,
+    :true_β => 20,
     :ϕ => x -> [x, x^2, x^4],
     :w => [10, 817, π],
     :μ_prior => [0., 0, 0],
