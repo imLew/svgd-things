@@ -52,7 +52,6 @@ function svgd_fit(q, grad_logp ;n_iter=100, step_size=1,
         elseif kernel_width == "mean"
             kernel.transform.s .= 1 / mean(pairwise(Euclidean(), q, dims=2))^2 
         end
-        @info "distances" pairwise(Euclidean(), q, dims=2)
         # ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
         ϕ = calculate_phi(kernel, q, grad_logp)
         dKL_rkhs = compute_phi_norm(q, kernel, grad_logp, 

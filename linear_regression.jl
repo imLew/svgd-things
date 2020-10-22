@@ -54,9 +54,9 @@ function log_likelihood(data::RegressionData, model::RegressionModel)
     length(data)/2 * log(model.β/(2π)) - model.β * E(data, model)
 end
 
-# function grad_logp(D::RegressionData, model::RegressionModel) 
-#     model.β * sum( ( D.t .- y.([model], D.x) ) .* model.ϕ.(D.x) )
-# end
+function grad_log_likelihood(D::RegressionData, model::RegressionModel) 
+    model.β * sum( ( D.t .- y.([model], D.x) ) .* model.ϕ.(D.x) )
+end
 
 function fit_linear_regression(problem_params, alg_params, D) 
     # we use the prior as the initial distribution of the particles
@@ -66,8 +66,8 @@ function fit_linear_regression(problem_params, alg_params, D)
     q = rand(initial_dist, alg_params[:n_particles])
     function grad_logp(w) 
         model = RegressionModel(problem_params[:ϕ], w, problem_params[:true_β])
-        # grad_log_prior = 0 #TODO add prior
-        model.β * sum( ( D.t .- y.([model], D.x) ) .* model.ϕ.(D.x) )
+        grad_log_prior = 0 #TODO add prior
+        grad_log_likelihood(D, model) .+ grad_log_prior
     end
 
     q, hist = svgd_fit(q, grad_logp; alg_params...)
@@ -86,23 +86,25 @@ function run_linear_regression(problem_params, alg_params, n_runs)
                          sample_range=problem_params[:sample_range]
                         )
 
-    for i in 1:n_runs
-        @info "Run $i/$(n_runs)"
-        initial_dist, q, hist = fit_linear_regression(problem_params, 
-                                                      alg_params, D)
-        # H₀ = Distributions.entropy(initial_dist)
-        # EV = ( numerical_expectation( initial_dist, 
-        #                               w -> logistic_log_likelihood(D,w) )
-        #        + expectation_V(initial_dist, initial_dist) 
-        #        + 0.5 * log( det(2π * problem_params[:Σ_initial]) )
-        #       )
-        # est_logZ = estimate_logZ(H₀, EV,
-        #                     alg_params[:step_size] * sum( get(hist,:dKL)[2] ) 
-        #                          )
+    initial_dist, q, hist = fit_linear_regression(problem_params, 
+                                                  alg_params, D)
+    # for i in 1:n_runs
+    #     @info "Run $i/$(n_runs)"
+    #     initial_dist, q, hist = fit_linear_regression(problem_params, 
+    #                                                   alg_params, D)
+    #     # H₀ = Distributions.entropy(initial_dist)
+    #     # EV = ( numerical_expectation( initial_dist, 
+    #     #                               w -> logistic_log_likelihood(D,w) )
+    #     #        + expectation_V(initial_dist, initial_dist) 
+    #     #        + 0.5 * log( det(2π * problem_params[:Σ_initial]) )
+    #     #       )
+    #     # est_logZ = estimate_logZ(H₀, EV,
+    #     #                     alg_params[:step_size] * sum( get(hist,:dKL)[2] ) 
+    #     #                          )
 
-        # push!(svgd_results, hist)
-        # push!(estimation_results, est_logZ)
-    end
+    #     # push!(svgd_results, hist)
+    #     # push!(estimation_results, est_logZ)
+    # end
 
     # file_prefix = savename( merge(problem_params, alg_params, @dict n_runs) )
 
@@ -115,18 +117,18 @@ end
 ### Experiments - linear regression on 3 basis functions
 
 alg_params = Dict(
-    :step_size => 0.01,
-    :n_iter => 50, 
-    :n_particles => 50,
+    :step_size => 0.001,
+    :n_iter => 500,
+    :n_particles => 20,
     :kernel_width => "median_trick"
 )
 
 problem_params = Dict(
-    :n_samples => 4,
+    :n_samples => 40,
     :sample_range => [-3, 3],
     :true_ϕ => x -> [x, x^2, x^4],
-    :true_w => [20, -17, π],
-    :true_β => 20,
+    :true_w => [20, -17, 0.2],
+    :true_β => 2,
     :ϕ => x -> [x, x^2, x^4],
     :w => [10, 817, π],
     :μ_prior => [0., 0, 0],
@@ -136,4 +138,4 @@ problem_params = Dict(
 
 n_runs = 1
 
-run_linear_regression(problem_params, alg_params, n_runs)
+id,q, h =run_linear_regression(problem_params, alg_params, n_runs)
