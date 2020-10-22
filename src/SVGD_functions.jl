@@ -15,7 +15,6 @@ export empirical_RKHS_norm
 export compute_phi_norm
 export unbiased_stein_discrep
 export stein_discrep_biased
-export svgd_step_with_int
 
 
 function median_trick(x)
@@ -48,7 +47,12 @@ function svgd_fit(q, grad_logp ;n_iter=100, step_size=1,
             kernel.transform.s .= 1/sqrt(median_trick(q))
         elseif kernel_width == "median"
             kernel.transform.s .= 1/median(pairwise(Euclidean(), q, dims=2))
+        elseif kernel_width == "median_squared"
+            kernel.transform.s .= 1 / (0.002*median(pairwise(Euclidean(), q, dims=2))^2 )        
+        elseif kernel_width == "mean"
+            kernel.transform.s .= 1 / mean(pairwise(Euclidean(), q, dims=2))^2 
         end
+        @info "distances" pairwise(Euclidean(), q, dims=2)
         # ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
         ϕ = calculate_phi(kernel, q, grad_logp)
         dKL_rkhs = compute_phi_norm(q, kernel, grad_logp, 
@@ -64,10 +68,6 @@ function svgd_fit(q, grad_logp ;n_iter=100, step_size=1,
         push!(hist, :ϕ_norm, i, mean(norm(ϕ)))
     end
     return q, hist
-end
-
-function plot_iteration(q_0, q, i)
-    Plots.display(plot_svgd_results(q_0, q, nothing, title="$i"))
 end
 
 function calculate_phi(kernel, q, grad_logp)
