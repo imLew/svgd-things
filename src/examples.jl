@@ -40,7 +40,7 @@ function estimate_logZ(H0, EV, int_KL)
 end
 
 function numerical_expectation(d::Distribution, f; n_samples=10000)
-    sum( f( rand(d, n_samples) ) ) / n_samples
+    sum( f, rand(d, n_samples) ) / n_samples
 end
 
 function logZ(d::Distribution)

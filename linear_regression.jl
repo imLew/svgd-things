@@ -35,7 +35,8 @@ function Base.iterate(d::RegressionData, state)
         return nothing
     end
 end
-y(model::RegressionModel, x) = dot(model.w, model.ϕ(x))
+y(model::RegressionModel) = x -> dot(model.w, model.ϕ(x))
+y(model::RegressionModel, x) = y(model)(x)
 
 function generate_samples(;model::RegressionModel, n_samples=100, 
                           sample_range=[-10, 10])
@@ -45,17 +46,17 @@ function generate_samples(;model::RegressionModel, n_samples=100,
     return RegressionData(samples, target)
 end
 
-function likelihood(data::RegressionData, model::RegressionModel)
-    prod( data-> pdf( Normal(y(model, data.x), 1/sqrt(model.β)), data.t), data )
+function likelihood(D::RegressionData, model::RegressionModel)
+    prod( D-> pdf( Normal(y(model, D.x), 1/sqrt(model.β)), D.t), D )
 end
 
-E(D, model) = 2 \ sum( (D.t .- y.([model], D.x)).^2 )
-function log_likelihood(data::RegressionData, model::RegressionModel)
-    length(data)/2 * log(model.β/(2π)) - model.β * E(data, model)
+E(D, model) = 2 \ sum( (D.t .- y(model).(D.x)).^2 )
+function log_likelihood(D::RegressionData, model::RegressionModel)
+    length(D)/2 * log(model.β/(2π)) - model.β * E(D, model)
 end
 
 function grad_log_likelihood(D::RegressionData, model::RegressionModel) 
-    model.β * sum( ( D.t .- y.([model], D.x) ) .* model.ϕ.(D.x) )
+    model.β * sum( ( D.t .- y(model).(D.x) ) .* model.ϕ.(D.x) )
 end
 
 function fit_linear_regression(problem_params, alg_params, D) 
@@ -74,6 +75,12 @@ function fit_linear_regression(problem_params, alg_params, D)
     return initial_dist, q, hist
 end
 
+# the other numerical_expectation function applies f to each element instead
+# of each col :/
+function num_expectation(d::Distribution, f; n_samples=10000)
+    sum( f, eachcol(rand(d, n_samples)) ) / n_samples
+end
+
 function run_linear_regression(problem_params, alg_params, n_runs)
     svgd_results = []
     estimation_results = []
@@ -86,56 +93,72 @@ function run_linear_regression(problem_params, alg_params, n_runs)
                          sample_range=problem_params[:sample_range]
                         )
 
-    initial_dist, q, hist = fit_linear_regression(problem_params, 
-                                                  alg_params, D)
-    # for i in 1:n_runs
-    #     @info "Run $i/$(n_runs)"
-    #     initial_dist, q, hist = fit_linear_regression(problem_params, 
-    #                                                   alg_params, D)
-    #     # H₀ = Distributions.entropy(initial_dist)
-    #     # EV = ( numerical_expectation( initial_dist, 
-    #     #                               w -> logistic_log_likelihood(D,w) )
-    #     #        + expectation_V(initial_dist, initial_dist) 
-    #     #        + 0.5 * log( det(2π * problem_params[:Σ_initial]) )
-    #     #       )
-    #     # est_logZ = estimate_logZ(H₀, EV,
-    #     #                     alg_params[:step_size] * sum( get(hist,:dKL)[2] ) 
-    #     #                          )
+    # initial_dist, q, hist = fit_linear_regression(problem_params, 
+    #                                               alg_params, D)
+    for i in 1:n_runs
+        @info "Run $i/$(n_runs)"
+        initial_dist, q, hist = fit_linear_regression(problem_params, 
+                                                      alg_params, D)
+        H₀ = Distributions.entropy(initial_dist)
+        EV = ( num_expectation( initial_dist, w -> log_likelihood(D, RegressionModel(problem_params[:ϕ], w, problem_params[:true_β])) )
+               + expectation_V(initial_dist, initial_dist) 
+               + 0.5 * log( det(2π * problem_params[:Σ_prior]) )
+              )
+        est_logZ = estimate_logZ(H₀, EV,
+                            alg_params[:step_size] * sum( get(hist,:dKL_rkhs)[2] ) 
+                                 )
 
-    #     # push!(svgd_results, hist)
-    #     # push!(estimation_results, est_logZ)
-    # end
+        push!(svgd_results, hist)
+        push!(estimation_results, est_logZ)
+    end
 
-    # file_prefix = savename( merge(problem_params, alg_params, @dict n_runs) )
+    file_prefix = savename( merge(problem_params, alg_params, @dict n_runs) )
 
-    # tagsave(datadir(DIRNAME, file_prefix * ".bson"),
-    #         merge(alg_params, problem_params, 
-    #             @dict n_runs estimation_results svgd_results),
-    #         safe=true, storepatch = false)
+    tagsave(datadir(DIRNAME, file_prefix * ".bson"),
+            merge(alg_params, problem_params, 
+                @dict n_runs estimation_results svgd_results),
+            safe=true, storepatch = false)
+end
+
+function plot_results(plt, q, problem_params)
+    x = range(problem_params[:sample_range]..., length=100)
+    for w in eachcol(q)
+        model = RegressionModel(problem_params[:ϕ], w, problem_params[:true_β])
+        plot!(plt,x, y(model), alpha=0.3, color=:orange, legend=:none)
+    end
+    plot!(plt,x, 
+            y(RegressionModel(problem_params[:ϕ], 
+                              mean(q, dims=2), 
+                              problem_params[:true_β])), 
+        color=:red)
+    plot!(plt,x, 
+            y(RegressionModel(problem_params[:true_ϕ], 
+                              problem_params[:true_w], 
+                              problem_params[:true_β])), 
+        color=:green)
 end
 
 ### Experiments - linear regression on 3 basis functions
 
 alg_params = Dict(
-    :step_size => 0.001,
-    :n_iter => 500,
-    :n_particles => 20,
+    :step_size => 0.0001,
+    :n_iter => 100,
+    :n_particles => 5,
     :kernel_width => "median_trick"
 )
 
 problem_params = Dict(
-    :n_samples => 40,
+    :n_samples => 20,
     :sample_range => [-3, 3],
-    :true_ϕ => x -> [x, x^2, x^4],
-    :true_w => [20, -17, 0.2],
+    :true_ϕ => x -> [x, x^2, x^4, x^5],
+    :true_w => [2, -1, 0.2, 1],
     :true_β => 2,
-    :ϕ => x -> [x, x^2, x^4],
-    :w => [10, -17, π],
-    :μ_prior => [0., 0, 0],
-    :Σ_prior => [1 0 0.; 0 1 0; 0 0 1],
-    # :Σ_initial => [9. 0.5 1; 0.5 8 2;1 2 1.],
+    :ϕ => x -> [x, x^2, x^4, x^3],
+    :μ_prior => zeros(4),
+    :Σ_prior => I(4),
 )
 
 n_runs = 1
 
 id,q, h =run_linear_regression(problem_params, alg_params, n_runs)
+# plot_results(plot(size=(300,250)), q, problem_params)

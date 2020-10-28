@@ -9,12 +9,12 @@ using Distances
 using PDMats
 
 export svgd_fit
-export median_trick
-export kernel_grad_matrix
-export empirical_RKHS_norm
-export compute_phi_norm
-export unbiased_stein_discrep
-export stein_discrep_biased
+# export median_trick
+# export kernel_grad_matrix
+# export empirical_RKHS_norm
+# export compute_phi_norm
+# export unbiased_stein_discrep
+# export stein_discrep_biased
 
 
 function median_trick(x)
@@ -43,6 +43,7 @@ function svgd_fit(q, grad_logp ;n_iter=100, step_size=1,
                    )
     end
     @showprogress for i in 1:n_iter
+        # @info "Step $i / $n_iter"
         if kernel_width == "median_trick"
             kernel.transform.s .= 1/sqrt(median_trick(q))
         elseif kernel_width == "median"
@@ -52,19 +53,20 @@ function svgd_fit(q, grad_logp ;n_iter=100, step_size=1,
         elseif kernel_width == "mean"
             kernel.transform.s .= 1 / mean(pairwise(Euclidean(), q, dims=2))^2 
         end
-        # ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
-        ϕ = calculate_phi(kernel, q, grad_logp)
+        ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
+        # ϕ = calculate_phi(kernel, q, grad_logp)
+        q .+= step_size*ϕ
         dKL_rkhs = compute_phi_norm(q, kernel, grad_logp, 
                                      norm_method="RKHS_norm", ϕ=ϕ)
         dKL_unbiased = compute_phi_norm(q, kernel, grad_logp, 
                                      norm_method="unbiased", ϕ=ϕ)
         dKL_stein_discrep = compute_phi_norm(q, kernel, grad_logp, 
                                      norm_method="standard", ϕ=ϕ)
-        q .+= step_size*ϕ
         push!(hist, :dKL_unbiased, i, dKL_unbiased)
         push!(hist, :dKL_stein_discrep, i, dKL_stein_discrep)
         push!(hist, :dKL_rkhs, i, dKL_rkhs)
         push!(hist, :ϕ_norm, i, mean(norm(ϕ)))
+        # @debug "ϕ L² norm = $(mean(norm(ϕ)))"
     end
     return q, hist
 end
