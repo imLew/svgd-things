@@ -67,8 +67,9 @@ function fit_linear_regression(problem_params, alg_params, D)
     q = rand(initial_dist, alg_params[:n_particles])
     function grad_logp(w) 
         model = RegressionModel(problem_params[:ϕ], w, problem_params[:true_β])
-        grad_log_prior = 0 #TODO add prior
-        grad_log_likelihood(D, model) .+ grad_log_prior
+        (grad_log_likelihood(D, model) 
+            .- inv(problem_params[:Σ_prior]) * (w-problem_params[:μ_prior])
+        )
     end
 
     q, hist = svgd_fit(q, grad_logp; alg_params...)
@@ -100,7 +101,12 @@ function run_linear_regression(problem_params, alg_params, n_runs)
         initial_dist, q, hist = fit_linear_regression(problem_params, 
                                                       alg_params, D)
         H₀ = Distributions.entropy(initial_dist)
-        EV = ( num_expectation( initial_dist, w -> log_likelihood(D, RegressionModel(problem_params[:ϕ], w, problem_params[:true_β])) )
+        EV = ( num_expectation( 
+                    initial_dist, 
+                    w -> log_likelihood(D, 
+                            RegressionModel(problem_params[:ϕ], w, 
+                                            problem_params[:true_β])) 
+               )
                + expectation_V(initial_dist, initial_dist) 
                + 0.5 * log( det(2π * problem_params[:Σ_prior]) )
               )
