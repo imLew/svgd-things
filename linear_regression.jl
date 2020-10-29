@@ -1,4 +1,5 @@
 using DrWatson
+using Plots
 using BSON
 using Distributions
 using DataFrames
@@ -42,7 +43,7 @@ function generate_samples(;model::RegressionModel, n_samples=100,
                           sample_range=[-10, 10])
     samples =  rand(Uniform(sample_range...), n_samples) 
     noise = rand(Normal(0, 1/sqrt(model.β)), n_samples)
-    target = y.([model], samples) .+ noise
+    target = y(model).(samples) .+ noise
     return RegressionData(samples, target)
 end
 
@@ -52,7 +53,7 @@ end
 
 E(D, model) = 2 \ sum( (D.t .- y(model).(D.x)).^2 )
 function log_likelihood(D::RegressionData, model::RegressionModel)
-    length(D)/2 * log(model.β/(2π)) - model.β * E(D, model)
+    length(D)/2 * log(model.β/2π) - model.β * E(D, model)
 end
 
 function grad_log_likelihood(D::RegressionData, model::RegressionModel) 
@@ -153,6 +154,7 @@ alg_params = Dict(
     :kernel_width => "median_trick"
 )
 
+
 problem_params = Dict(
     :n_samples => 20,
     :sample_range => [-3, 3],
@@ -166,5 +168,30 @@ problem_params = Dict(
 
 n_runs = 1
 
-id,q, h =run_linear_regression(problem_params, alg_params, n_runs)
-# plot_results(plot(size=(300,250)), q, problem_params)
+# id,q, h =run_linear_regression(problem_params, alg_params, n_runs)
+
+
+# run it once to get a value for log Z
+true_model = RegressionModel(problem_params[:true_ϕ], problem_params[:true_w], 
+                                 problem_params[:true_β])
+    # dataset with labels
+D = generate_samples(model=true_model, 
+                     n_samples=problem_params[:n_samples],
+                     sample_range=problem_params[:sample_range]
+                    )
+
+initial_dist, q, hist = fit_linear_regression(problem_params, alg_params, D)
+        H₀ = Distributions.entropy(initial_dist)
+        EV = ( num_expectation( 
+                    initial_dist, 
+                    w -> log_likelihood(D, 
+                            RegressionModel(problem_params[:ϕ], w, 
+                                            problem_params[:true_β])) 
+               )
+               + expectation_V(initial_dist, initial_dist) 
+               + 0.5 * log( det(2π * problem_params[:Σ_prior]) )
+              )
+        est_logZ = estimate_logZ(H₀, EV,
+                            alg_params[:step_size] * sum( get(hist,:dKL_rkhs)[2] ) 
+                                 )
+plot_results(plot(size=(300,250)), q, problem_params)
