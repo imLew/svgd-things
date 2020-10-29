@@ -149,8 +149,8 @@ end
 
 alg_params = Dict(
     :step_size => 0.0001,
-    :n_iter => 100,
-    :n_particles => 5,
+    :n_iter => 2000,
+    :n_particles => 50,
     :kernel_width => "median_trick"
 )
 
