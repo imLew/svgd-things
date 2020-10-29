@@ -143,13 +143,14 @@ function plot_results(plt, q, problem_params)
                               problem_params[:true_w], 
                               problem_params[:true_β])), 
         color=:green)
+    return plt
 end
 
 ### Experiments - linear regression on 3 basis functions
 
 alg_params = Dict(
     :step_size => 0.0001,
-    :n_iter => 2000,
+    :n_iter => 1000,
     :n_particles => 50,
     :kernel_width => "median_trick"
 )
@@ -194,4 +195,11 @@ initial_dist, q, hist = fit_linear_regression(problem_params, alg_params, D)
         est_logZ = estimate_logZ(H₀, EV,
                             alg_params[:step_size] * sum( get(hist,:dKL_rkhs)[2] ) 
                                  )
-plot_results(plot(size=(300,250)), q, problem_params)
+
+norm_plot = plot(hist[:ϕ_norm])
+int_plot = plot(
+    estimate_logZ.([H₀], [EV], alg_params[:step_size] * cumsum( get(hist,:dKL_rkhs)[2])
+    )
+)
+fit_plot = plot_results(plot(size=(300,250)), q, problem_params)
+plot(fit_plot, norm_plot, int_plot, layout=@layout [f; n i])
