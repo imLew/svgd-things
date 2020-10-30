@@ -4,7 +4,6 @@ using BSON
 using Distributions
 using DataFrames
 using LinearAlgebra
-using Optim
 
 using SVGD #include(joinpath(@__DIR__, "src", "SVGD.jl"))
 
@@ -40,6 +39,24 @@ end
 y(model::RegressionModel) = x -> dot(model.w, model.ϕ(x))
 y(model::RegressionModel, x) = y(model)(x)
 
+# util functions for analytical solution
+Φ(ϕ) = x -> ϕ(x) 
+# returns an array (indexed by x) of arrays containing ϕ(x)
+Φ(ϕ, D::RegressionData) = vcat( Φ(ϕ).(D.x)'... )
+# accuracy = inverse of variance
+function posterior_accuracy(ϕ, β, D::RegressionData, Σ₀)
+    inv(Σ₀) + β * Φ(ϕ, D)'Φ(ϕ, D)
+end
+function posterior_variance(ϕ, β, D::RegressionData, Σ₀)
+    inv(posterior_accuracy(ϕ, β, D, Σ₀))
+end
+function posterior_mean(ϕ, β, D::RegressionData, μ₀, Σ₀)
+    posterior_variance(ϕ, D, Σ₀) * ( inv(Σ₀)μ₀ + β * Φ(ϕ, D)' *D.t )
+end
+
+posterior_variance(m.ϕ, m.β, D, I(4))
+posterior_mean(m.ϕ, m.β, D, zeros(4), I(4))
+
 function generate_samples(;model::RegressionModel, n_samples=100, 
                           sample_range=[-10, 10])
     samples =  rand(Uniform(sample_range...), n_samples) 
@@ -61,7 +78,7 @@ function grad_log_likelihood(D::RegressionData, model::RegressionModel)
     model.β * sum( ( D.t .- y(model).(D.x) ) .* model.ϕ.(D.x) )
 end
 
-function fit_linear_regression(problem_params, alg_params, D; MAP_start = true)
+function fit_linear_regression(problem_params, alg_params)
     function logp(w)
         model = RegressionModel(problem_params[:ϕ], w, problem_params[:true_β])
         log_likelihood(D, model) + logpdf(MvNormal(problem_params[:μ_prior], problem_params[:Σ_prior]), w)
@@ -74,16 +91,15 @@ function fit_linear_regression(problem_params, alg_params, D; MAP_start = true)
     end
     grad_logp!(g, w) = g .= grad_logp(w)
     # we use the prior as the initial distribution of the particles
-    global μ_prior = if MAP_start
-        Optim.maximizer(Optim.maximize(logp, grad_logp!, problem_params[:μ_prior], LBFGS()))
+    global μ_prior = if problem_params[:MAP_start]
+        posterior_mean(problem_params[:ϕ], problem_params[:true_β], D, 
+                       problem_params[:μ_prior], problem_params[:Σ_prior])
     else
         problem_params[:μ_prior]
     end
 
-
     initial_dist = MvNormal(μ_prior, problem_params[:Σ_prior])
     q = rand(initial_dist, alg_params[:n_particles])
-
 
     q, hist = SVGD.svgd_fit(q, grad_logp; alg_params...)
     return initial_dist, q, hist
@@ -98,7 +114,8 @@ function run_linear_regression(problem_params, alg_params, n_runs)
     svgd_results = []
     estimation_results = []
 
-    true_model = RegressionModel(problem_params[:true_ϕ], problem_params[:true_w], 
+    true_model = RegressionModel(problem_params[:true_ϕ],
+                                 problem_params[:true_w], 
                                  problem_params[:true_β])
     # dataset with labels
     D = generate_samples(model=true_model, 
@@ -123,7 +140,7 @@ function run_linear_regression(problem_params, alg_params, n_runs)
                + 0.5 * log( det(2π * problem_params[:Σ_prior]) )
               )
         est_logZ = estimate_logZ(H₀, EV,
-                            alg_params[:step_size] * sum( get(hist,:dKL_rkhs)[2] ) 
+                            alg_params[:step_size] * sum(get(hist,:dKL_rkhs)[2]) 
                                  )
 
         push!(svgd_results, hist)
@@ -176,6 +193,7 @@ problem_params = Dict(
     :ϕ => x -> [x, x^2, x^4, x^3],
     :μ_prior => zeros(4),
     :Σ_prior => 1.0I(4),
+    :MAP_start => true,
 )
 
 n_runs = 1
