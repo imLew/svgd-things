@@ -53,9 +53,9 @@ end
 function posterior_mean(ϕ, β, D::RegressionData, μ₀, Σ₀)
     posterior_variance(ϕ, D, Σ₀) * ( inv(Σ₀)μ₀ + β * Φ(ϕ, D)' *D.t )
 end
-
-posterior_variance(m.ϕ, m.β, D, I(4))
-posterior_mean(m.ϕ, m.β, D, zeros(4), I(4))
+function regression_logZ(Σ₀, β, ϕ, D)
+    log( sqrt( det( 2π * posterior_accuracy(ϕ, β, D, Σ₀) ) ) )
+end
 
 function generate_samples(;model::RegressionModel, n_samples=100, 
                           sample_range=[-10, 10])
