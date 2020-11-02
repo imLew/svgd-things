@@ -30,8 +30,8 @@ function expectation_V(initial_dist::Normal, target_dist::Normal)
 end
 
 function expectation_V(initial_dist::MvNormal, target_dist::MvNormal)
-    μ₀, Σ₀ = params(initial_dist)
-    μₚ, Σₚ = params(target_dist)
+    μ₀, Σ₀ = Distributions.params(initial_dist)
+    μₚ, Σₚ = Distributions.params(target_dist)
     0.5 * ( tr(inv(Σₚ)*Σ₀) + invquad(Σₚ, μ₀-μₚ) )
 end
 

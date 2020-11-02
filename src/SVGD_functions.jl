@@ -4,6 +4,7 @@ using ValueHistories
 using KernelFunctions
 using LinearAlgebra
 using Random
+using Flux
 using Zygote
 using Distances
 using PDMats
@@ -30,6 +31,7 @@ grad(f,x,y) = gradient(f,x,y)[1]
 function svgd_fit(q, grad_logp ;n_iter=100, step_size=1,
                            norm_method="standard", kernel_width=nothing,
                            n_particles=50)
+    opt = Descent(step_size)
     hist = MVHistory()
     if kernel_width isa Number
         kernel = TransformedKernel( 
@@ -54,8 +56,9 @@ function svgd_fit(q, grad_logp ;n_iter=100, step_size=1,
             kernel.transform.s .= 1 / mean(pairwise(Euclidean(), q, dims=2))^2 
         end
         ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
+        εϕ = Flux.Optimise.apply!(opt, q, ϕ)
         # ϕ = calculate_phi(kernel, q, grad_logp)
-        q .+= step_size*ϕ
+        q .+= εϕ
         dKL_rkhs = compute_phi_norm(q, kernel, grad_logp, 
                                      norm_method="RKHS_norm", ϕ=ϕ)
         dKL_unbiased = compute_phi_norm(q, kernel, grad_logp, 
@@ -119,11 +122,18 @@ function empirical_RKHS_norm(kernel::Kernel, q, ϕ)
         # the second method should be the straight forward case for a
         # kernel that is a scalar f(x) times identity matrix
         norm = 0
-        k_mat = kernelpdmat(kernel, q)
-        for f in eachrow(ϕ)
-            norm += invquad(k_mat, vec(f))
+        try 
+            k_mat = kernelpdmat(kernel, q)
+            for f in eachrow(ϕ)
+                norm += invquad(k_mat, vec(f))
+            end
+            return norm
+        catch e
+            if e isa PosDefException
+                @show kernel
+            end
+            rethrow(e)
         end
-        return norm
     end
 end
 
