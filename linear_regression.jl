@@ -49,8 +49,8 @@ end
 function posterior_variance(ϕ, β, X, Σ₀)
     inv(posterior_accuracy(ϕ, β, X, Σ₀))
 end
-function posterior_mean(ϕ, β, X, μ₀, Σ₀)
-    posterior_variance(ϕ, β, X, Σ₀) * ( inv(Σ₀)μ₀ + β * Φ(ϕ, X)' *X.t )
+function posterior_mean(ϕ, β, D, μ₀, Σ₀)
+    posterior_variance(ϕ, β, D.x, Σ₀) * ( inv(Σ₀)μ₀ + β * Φ(ϕ, D.x)' * D.t )
 end
 function regression_logZ(Σ₀, β, ϕ, X)
     2 \ log( det( 2π * posterior_variance(ϕ, β, X, Σ₀) ) ) 
@@ -87,7 +87,7 @@ function fit_linear_regression(problem_params, alg_params, D::RegressionData)
 
     # use eithe prior as initial distribution of change initial mean to MAP
     global μ_prior = if problem_params[:MAP_start]
-        posterior_mean(problem_params[:ϕ], problem_params[:true_β], D.x, 
+        posterior_mean(problem_params[:ϕ], problem_params[:true_β], D, 
                        problem_params[:μ_prior], problem_params[:Σ_prior])
     else
         problem_params[:μ_prior]
