@@ -119,7 +119,7 @@ elseif ARGS[1] == "make-dicts"
     for (i, alg_params) ∈ enumerate(dict_list(ALG_PARAMS))
         for (j, problem_params) ∈ enumerate(dict_list(PROBLEM_PARAMS))
             dname = tmpsave([@dict alg_params problem_params N_RUNS])
-            dnames["$( (j-1)*dict_list_count(ALG_PARAMS) + i )"] = dname
+            dnames["$((i-1)*dict_list_count(PROBLEM_PARAMS) + j )"] = dname
         end
     end
     using BSON

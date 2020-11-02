@@ -4,18 +4,18 @@ using ValueHistories
 using KernelFunctions
 using LinearAlgebra
 using Random
+using Flux
 using Zygote
 using Distances
 using PDMats
 
 export svgd_fit
-export median_trick
-export kernel_grad_matrix
-export empirical_RKHS_norm
-export compute_phi_norm
-export unbiased_stein_discrep
-export stein_discrep_biased
-export svgd_step_with_int
+# export median_trick
+# export kernel_grad_matrix
+# export empirical_RKHS_norm
+# export compute_phi_norm
+# export unbiased_stein_discrep
+# export stein_discrep_biased
 
 
 function median_trick(x)
@@ -31,6 +31,7 @@ grad(f,x,y) = gradient(f,x,y)[1]
 function svgd_fit(q, grad_logp ;n_iter=100, step_size=1,
                            norm_method="standard", kernel_width=nothing,
                            n_particles=50)
+    opt = Descent(step_size)
     hist = MVHistory()
     if kernel_width isa Number
         kernel = TransformedKernel( 
@@ -44,30 +45,33 @@ function svgd_fit(q, grad_logp ;n_iter=100, step_size=1,
                    )
     end
     @showprogress for i in 1:n_iter
+        # @info "Step $i / $n_iter"
         if kernel_width == "median_trick"
             kernel.transform.s .= 1/sqrt(median_trick(q))
         elseif kernel_width == "median"
             kernel.transform.s .= 1/median(pairwise(Euclidean(), q, dims=2))
+        elseif kernel_width == "median_squared"
+            kernel.transform.s .= 1 / (0.002*median(pairwise(Euclidean(), q, dims=2))^2 )        
+        elseif kernel_width == "mean"
+            kernel.transform.s .= 1 / mean(pairwise(Euclidean(), q, dims=2))^2 
         end
-        # ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
-        ϕ = calculate_phi(kernel, q, grad_logp)
+        ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
+        εϕ = Flux.Optimise.apply!(opt, q, ϕ)
+        # ϕ = calculate_phi(kernel, q, grad_logp)
+        q .+= εϕ
         dKL_rkhs = compute_phi_norm(q, kernel, grad_logp, 
                                      norm_method="RKHS_norm", ϕ=ϕ)
         dKL_unbiased = compute_phi_norm(q, kernel, grad_logp, 
                                      norm_method="unbiased", ϕ=ϕ)
         dKL_stein_discrep = compute_phi_norm(q, kernel, grad_logp, 
                                      norm_method="standard", ϕ=ϕ)
-        q .+= step_size*ϕ
         push!(hist, :dKL_unbiased, i, dKL_unbiased)
         push!(hist, :dKL_stein_discrep, i, dKL_stein_discrep)
         push!(hist, :dKL_rkhs, i, dKL_rkhs)
         push!(hist, :ϕ_norm, i, mean(norm(ϕ)))
+        # @debug "ϕ L² norm = $(mean(norm(ϕ)))"
     end
     return q, hist
-end
-
-function plot_iteration(q_0, q, i)
-    Plots.display(plot_svgd_results(q_0, q, nothing, title="$i"))
 end
 
 function calculate_phi(kernel, q, grad_logp)
@@ -118,11 +122,18 @@ function empirical_RKHS_norm(kernel::Kernel, q, ϕ)
         # the second method should be the straight forward case for a
         # kernel that is a scalar f(x) times identity matrix
         norm = 0
-        k_mat = kernelpdmat(kernel, q)
-        for f in eachrow(ϕ)
-            norm += invquad(k_mat, vec(f))
+        try 
+            k_mat = kernelpdmat(kernel, q)
+            for f in eachrow(ϕ)
+                norm += invquad(k_mat, vec(f))
+            end
+            return norm
+        catch e
+            if e isa PosDefException
+                @show kernel
+            end
+            rethrow(e)
         end
-        return norm
     end
 end
 

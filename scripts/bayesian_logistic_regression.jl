@@ -3,6 +3,8 @@ using BSON
 using LinearAlgebra
 using Distributions
 
+using SVGD
+
 global DIRNAME = "bayesian_logistic_regression"
 
 ### local util functions
