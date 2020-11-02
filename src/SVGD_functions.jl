@@ -45,7 +45,7 @@ function svgd_fit(q, grad_logp ;n_iter=100, step_size=1,
                     ScaleTransform( 1/sqrt( median_trick(q) ) )
                    )
     end
-    for i in 1:n_iter
+    @showprogress for i in 1:n_iter
         # @info "Step $i / $n_iter"
         if kernel_width == "median_trick"
             kernel.transform.s .= 1/sqrt(median_trick(q))
@@ -60,18 +60,21 @@ function svgd_fit(q, grad_logp ;n_iter=100, step_size=1,
         # εϕ = Flux.Optimise.apply!(opt, q, ϕ)
         # # ϕ = calculate_phi(kernel, q, grad_logp)
         # q .+= εϕ
-        ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
-        if step_size * maximum(norm(ϕ)) > 1e3
-            @info "phi too large"
-        end
-        println(maximum(norm(ϕ)))
-        while step_size * maximum(norm(ϕ)) > 1e3
-            step_size /= 10
-        end
-        @info step_size
 
+        ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
         # phi = calculate_phi(kernel, q, grad_logp)
-        q .+= step_size*ϕ
+        if step_size isa Number
+            while step_size * maximum(norm(ϕ)) > 1e-1
+                step_size /= 10
+            end
+            q .+= step_size*ϕ
+        elseif length(step_size) == n_iter
+            q .+= step_size[i]*ϕ
+        else
+            @error """Step size is neither a number nor an array (of the
+                      correct length""" step_size
+        end
+
         dKL_rkhs = compute_phi_norm(q, kernel, grad_logp, 
                                      norm_method="RKHS_norm", ϕ=ϕ)
         dKL_unbiased = compute_phi_norm(q, kernel, grad_logp, 

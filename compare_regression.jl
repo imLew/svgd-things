@@ -11,7 +11,7 @@ problem_params = Dict(
     :true_β => 2,
     :ϕ => x -> [1, x, x^2],
     :μ_prior => zeros(n_dim),
-    :Σ_prior => 0.05I(n_dim),
+    :Σ_prior => 0.5I(n_dim),
     :MAP_start => true,
 )
 
@@ -49,7 +49,7 @@ therm_logZ = alg(logprior, loglikelihood, n_dim)
 
 alg_params = Dict(
     :step_size => 0.0001,
-    :n_iter => 2000,
+    :n_iter => 3000,
     :n_particles => 10,
     :kernel_width => "median_trick",
 )
