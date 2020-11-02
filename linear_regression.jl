@@ -40,21 +40,20 @@ y(model::RegressionModel) = x -> dot(model.w, model.ϕ(x))
 y(model::RegressionModel, x) = y(model)(x)
 
 # util functions for analytical solution
-Φ(ϕ) = x -> ϕ(x) 
 # returns an array (indexed by x) of arrays containing ϕ(x)
-Φ(ϕ, D::RegressionData) = vcat( Φ(ϕ).(D.x)'... )
+Φ(ϕ, X) = vcat( ϕ.(X)'... )
 # accuracy = inverse of variance
-function posterior_accuracy(ϕ, β, D::RegressionData, Σ₀)
-    inv(Σ₀) + β * Φ(ϕ, D)'Φ(ϕ, D)
+function posterior_accuracy(ϕ, β, X, Σ₀)
+    inv(Σ₀) + β * Φ(ϕ, X)'Φ(ϕ, X)
 end
-function posterior_variance(ϕ, β, D::RegressionData, Σ₀)
-    inv(posterior_accuracy(ϕ, β, D, Σ₀))
+function posterior_variance(ϕ, β, X, Σ₀)
+    inv(posterior_accuracy(ϕ, β, X, Σ₀))
 end
-function posterior_mean(ϕ, β, D::RegressionData, μ₀, Σ₀)
-    posterior_variance(ϕ, D, Σ₀) * ( inv(Σ₀)μ₀ + β * Φ(ϕ, D)' *D.t )
+function posterior_mean(ϕ, β, X, μ₀, Σ₀)
+    posterior_variance(ϕ, β, X, Σ₀) * ( inv(Σ₀)μ₀ + β * Φ(ϕ, X)' *X.t )
 end
-function regression_logZ(Σ₀, β, ϕ, D)
-    log( sqrt( det( 2π * posterior_accuracy(ϕ, β, D, Σ₀) ) ) )
+function regression_logZ(Σ₀, β, ϕ, X)
+    2 \ log( det( 2π * posterior_variance(ϕ, β, X, Σ₀) ) ) 
 end
 
 function generate_samples(;model::RegressionModel, n_samples=100, 
