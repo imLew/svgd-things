@@ -107,7 +107,9 @@ end
 
 function run_linear_regression(problem_params, alg_params, n_runs)
     svgd_results = []
-    estimation_results = []
+    estimation_rkhs = []
+    estimation_unbiased = []
+    estimation_stein_discrep = []
 
     true_model = RegressionModel(problem_params[:true_ϕ],
                                  problem_params[:true_w], 
@@ -118,8 +120,6 @@ function run_linear_regression(problem_params, alg_params, n_runs)
                          sample_range=problem_params[:sample_range]
                         )
 
-    # initial_dist, q, hist = fit_linear_regression(problem_params, 
-    #                                               alg_params, D)
     for i in 1:n_runs
         @info "Run $i/$(n_runs)"
         initial_dist, q, hist = fit_linear_regression(problem_params, 
@@ -134,19 +134,35 @@ function run_linear_regression(problem_params, alg_params, n_runs)
                + expectation_V(initial_dist, initial_dist) 
                + 0.5 * log( det(2π * problem_params[:Σ_prior]) )
               )
-        est_logZ = estimate_logZ(H₀, EV,
-                            alg_params[:step_size] * sum(get(hist,:dKL_rkhs)[2]) 
+        est_logZ_rkhs = estimate_logZ(H₀, EV,
+                        alg_params[:step_size] * sum( get(hist,:dKL_rkhs)[2] ) 
+                                 )
+        est_logZ_unbiased = estimate_logZ(H₀, EV,
+                    alg_params[:step_size] * sum( get(hist,:dKL_unbiased)[2] ) 
+                                 )
+        est_logZ_stein_discrep = estimate_logZ(H₀, EV,
+                alg_params[:step_size] * sum( get(hist,:dKL_stein_discrep)[2] ) 
                                  )
 
-        push!(svgd_results, hist)
-        push!(estimation_results, est_logZ)
+        push!(svgd_results, (hist, q))
+        push!(estimation_rkhs, est_logZ_rkhs) 
+        push!(estimation_unbiased, est_logZ_unbiased)
+        push!(estimation_stein_discrep,est_logZ_stein_discrep)
+        @info est_logZ_rkhs
+        @info est_logZ_unbiased
+        @info est_logZ_stein_discrep
     end
+
+    true_logZ = regression_logZ(problem_params[:Σ_prior], true_model.β, true_model.ϕ, D)
+    @info true_logZ
 
     file_prefix = savename( merge(problem_params, alg_params, @dict n_runs) )
 
     tagsave(datadir(DIRNAME, file_prefix * ".bson"),
             merge(alg_params, problem_params, 
-                @dict n_runs estimation_results svgd_results),
+                @dict n_runs, true_logZ, estimation_unbiased, 
+                        estimation_stein_discrep,
+                        estimation_rkhs, svgd_results),
             safe=true, storepatch = false)
 end
 
@@ -171,59 +187,59 @@ end
 
 ## Experiments - linear regression on 3 basis functions
 
-alg_params = Dict(
-    :step_size => 0.0001,
-    :n_iter => 1000,
-    :n_particles => 10,
-    :kernel_width => "median_trick",
-)
+# alg_params = Dict(
+#     :step_size => 0.0001,
+#     :n_iter => 1000,
+#     :n_particles => 20,
+#     :kernel_width => "median_trick",
+# )
 
 
-problem_params = Dict(
-    :n_samples => 20,
-    :sample_range => [-3, 3],
-    :true_ϕ => x -> [x, x^2, x^4, x^5],
-    :true_w => [2, -1, 0.2, 1],
-    :true_β => 2,
-    :ϕ => x -> [x, x^2, x^4, x^3],
-    :μ_prior => zeros(4),
-    :Σ_prior => 1.0I(4),
-    :MAP_start => true,
-)
+# problem_params = Dict(
+#     :n_samples => 20,
+#     :sample_range => [-3, 3],
+#     :true_ϕ => x -> [x, x^2, x^4, x^5],
+#     :true_w => [2, -1, 0.2, 1],
+#     :true_β => 2,
+#     :ϕ => x -> [x, x^2, x^4, x^3],
+#     :μ_prior => zeros(4),
+#     :Σ_prior => 1.0I(4),
+#     :MAP_start => true,
+# )
 
-n_runs = 1
+# n_runs = 1
 
-# id,q, h =run_linear_regression(problem_params, alg_params, n_runs)
+# run_linear_regression(problem_params, alg_params, n_runs)
 
 
-# run it once to get a value for log Z
-true_model = RegressionModel(problem_params[:true_ϕ], problem_params[:true_w], 
-                                 problem_params[:true_β])
-    # dataset with labels
-D = generate_samples(model=true_model, 
-                     n_samples=problem_params[:n_samples],
-                     sample_range=problem_params[:sample_range]
-                    )
+# # run it once to get a value for log Z
+# true_model = RegressionModel(problem_params[:true_ϕ], problem_params[:true_w], 
+#                                  problem_params[:true_β])
+#     # dataset with labels
+# D = generate_samples(model=true_model, 
+#                      n_samples=problem_params[:n_samples],
+#                      sample_range=problem_params[:sample_range]
+#                     )
 
-initial_dist, q, hist = fit_linear_regression(problem_params, alg_params, D)
-H₀ = Distributions.entropy(initial_dist)
-EV = ( num_expectation( 
-                    initial_dist, 
-                    w -> log_likelihood(D, 
-                            RegressionModel(problem_params[:ϕ], w, 
-                                            problem_params[:true_β])) 
-               )
-               + SVGD.expectation_V(initial_dist, initial_dist) 
-               + 0.5 * log( det(2π * problem_params[:Σ_prior]) )
-              )
-est_logZ = SVGD.estimate_logZ(H₀, EV,
-                            alg_params[:step_size] * sum( get(hist,:dKL_rkhs)[2] ) 
-                                 )
+# initial_dist, q, hist = fit_linear_regression(problem_params, alg_params, D)
+# H₀ = Distributions.entropy(initial_dist)
+# EV = ( num_expectation( 
+#                     initial_dist, 
+#                     w -> log_likelihood(D, 
+#                             RegressionModel(problem_params[:ϕ], w, 
+#                                             problem_params[:true_β])) 
+#                )
+#                + SVGD.expectation_V(initial_dist, initial_dist) 
+#                + 0.5 * log( det(2π * problem_params[:Σ_prior]) )
+#               )
+# est_logZ = SVGD.estimate_logZ(H₀, EV,
+#                             alg_params[:step_size] * sum( get(hist,:dKL_rkhs)[2] ) 
+#                                  )
 
-norm_plot = plot(hist[:ϕ_norm], title = "φ norm", yaxis = :log)
-int_plot = plot(
-    SVGD.estimate_logZ.([H₀], [EV], alg_params[:step_size] * cumsum( get(hist, :dKL_rkhs)[2]))
-    ,title = "log Z", label = "",
-)
-fit_plot = plot_results(plot(size=(300,250)), q, problem_params)
-plot(fit_plot, norm_plot, int_plot, layout=@layout [f; n i])
+# norm_plot = plot(hist[:ϕ_norm], title = "φ norm", yaxis = :log)
+# int_plot = plot(
+#     SVGD.estimate_logZ.([H₀], [EV], alg_params[:step_size] * cumsum( get(hist, :dKL_rkhs)[2]))
+#     ,title = "log Z", label = "",
+# )
+# fit_plot = plot_results(plot(size=(300,250)), q, problem_params)
+# plot(fit_plot, norm_plot, int_plot, layout=@layout [f; n i])
