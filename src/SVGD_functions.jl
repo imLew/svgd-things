@@ -9,7 +9,7 @@ using Zygote
 using Distances
 using PDMats
 
-export svgd_fit
+# export svgd_fit
 # export median_trick
 # export kernel_grad_matrix
 # export empirical_RKHS_norm
@@ -25,6 +25,7 @@ function median_trick(x)
     d = Distances.pairwise(Euclidean(), x, dims=2)
     median(d)^2/log(size(x)[end])
 end
+export median_trick
 
 grad(f,x,y) = gradient(f,x,y)[1]
 
@@ -55,24 +56,41 @@ function svgd_fit(q, grad_logp ;n_iter=100, step_size=1,
         elseif kernel_width == "mean"
             kernel.transform.s .= 1 / mean(pairwise(Euclidean(), q, dims=2))^2 
         end
-        ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
-        εϕ = Flux.Optimise.apply!(opt, q, ϕ)
-        # ϕ = calculate_phi(kernel, q, grad_logp)
-        q .+= εϕ
+        # ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
+        # εϕ = Flux.Optimise.apply!(opt, q, ϕ)
+        # # ϕ = calculate_phi(kernel, q, grad_logp)
+        # q .+= εϕ
+        phi = calculate_phi_vectorized(kernel, q, grad_logp)
+        # phi = calculate_phi(kernel, q, grad_logp)
+        q .+= step_size*phi
         dKL_rkhs = compute_phi_norm(q, kernel, grad_logp, 
-                                     norm_method="RKHS_norm", ϕ=ϕ)
+                                     norm_method="RKHS_norm", ϕ=phi)
         dKL_unbiased = compute_phi_norm(q, kernel, grad_logp, 
-                                     norm_method="unbiased", ϕ=ϕ)
+                                     norm_method="unbiased", ϕ=phi)
         dKL_stein_discrep = compute_phi_norm(q, kernel, grad_logp, 
-                                     norm_method="standard", ϕ=ϕ)
+                                     norm_method="standard", ϕ=phi)
         push!(hist, :dKL_unbiased, i, dKL_unbiased)
         push!(hist, :dKL_stein_discrep, i, dKL_stein_discrep)
         push!(hist, :dKL_rkhs, i, dKL_rkhs)
-        push!(hist, :ϕ_norm, i, mean(norm(ϕ)))
+        push!(hist, :phi_norm, i, mean(norm(phi)))
+        # ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
+        # # ϕ = calculate_phi(kernel, q, grad_logp)
+        # q .+= step_size*ϕ
+        # dKL_rkhs = compute_phi_norm(q, kernel, grad_logp, 
+        #                              norm_method="RKHS_norm", ϕ=ϕ)
+        # dKL_unbiased = compute_phi_norm(q, kernel, grad_logp, 
+        #                              norm_method="unbiased", ϕ=ϕ)
+        # dKL_stein_discrep = compute_phi_norm(q, kernel, grad_logp, 
+        #                              norm_method="standard", ϕ=ϕ)
+        # push!(hist, :dKL_unbiased, i, dKL_unbiased)
+        # push!(hist, :dKL_stein_discrep, i, dKL_stein_discrep)
+        # push!(hist, :dKL_rkhs, i, dKL_rkhs)
+        # push!(hist, :ϕ_norm, i, mean(norm(ϕ)))
         # @debug "ϕ L² norm = $(mean(norm(ϕ)))"
     end
     return q, hist
 end
+export svgd_fit
 
 function calculate_phi(kernel, q, grad_logp)
     glp = grad_logp.(eachcol(q))
@@ -87,6 +105,7 @@ function calculate_phi(kernel, q, grad_logp)
     end
     ϕ ./= size(q)[end]
 end
+export calculate_phi
 
 function calculate_phi_vectorized(kernel, q, grad_logp)
     n = size(q)[end]
@@ -101,6 +120,7 @@ function calculate_phi_vectorized(kernel, q, grad_logp)
                    )
     end
 end
+export calculate_phi_vectorized
 
 function compute_phi_norm(q, kernel, grad_logp; 
                           norm_method="standard", ϕ=nothing)
@@ -112,6 +132,7 @@ function compute_phi_norm(q, kernel, grad_logp;
         empirical_RKHS_norm(kernel, q, ϕ)
     end
 end
+export compute_phi_norm
 
 function empirical_RKHS_norm(kernel::Kernel, q, ϕ)
     if size(q)[1] == 1
@@ -136,8 +157,10 @@ function empirical_RKHS_norm(kernel::Kernel, q, ϕ)
         end
     end
 end
+export empirical_RKHS_norm
 
 # function empirical_RKHS_norm(kernel::MatrixKernel, q, ϕ)
+# export empirical_RKHS_norm
 #     invquad(flat_matrix_kernel_matrix(kernel, q), vec(ϕ))
 # end
 
@@ -158,22 +181,27 @@ function unbiased_stein_discrep(q, kernel, grad_logp)
     end
     dKL /= n*(n-1)
 end
+export unbiased_stein_discrep
 
 function stein_discrep_biased(q, kernel, grad_logp) 
     n = size(q)[end]
     h = 1/kernel.transform.s[1]^2
     d = size(q)[1]
+    k_mat = KernelFunctions.kernelmatrix(kernel, q)
     dKL = 0
-    for x  in eachcol(q)
-        for y  in eachcol(q)
-            dKL += kernel(x,y) * grad_logp(x)' * grad_logp(y)
+    for (i, x) in enumerate(eachcol(q))
+        glp_x = grad_logp(x)
+        for (j, y) in enumerate(eachcol(q))
+            dKL += k_mat[i,j] * glp_x' * grad_logp(y)
             dKL += gradient(x->kernel(x,y), x)[1]'*grad_logp(y)
-            dKL += gradient(y->kernel(x,y), y)[1]'*grad_logp(x)
-            dKL += kernel(x,y) * ( 2*d/h - 4/h^2 * SqEuclidean()(x,y))
+            dKL += gradient(y->kernel(x,y), y)[1]'*glp_x
+            # dKL += k_mat[i,j] * ( 2*d/h - 4/h^2 * SqEuclidean()(x,y))
         end
     end
+    dKL += sum(k_mat .* ( 2*d/h .- 4/h^2 * pairwise(SqEuclidean(), q)))
     dKL /= n^2
 end
+export stein_discrep_biased
 
 function kernel_grad_matrix(kernel::KernelFunctions.Kernel, q)
     if size(q)[end] == 1
@@ -181,4 +209,5 @@ function kernel_grad_matrix(kernel::KernelFunctions.Kernel, q)
     end
 	mapslices(x -> grad.(kernel, [x], eachcol(q)), q, dims = 1)
 end
+export kernel_grad_matrix
 

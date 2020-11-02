@@ -18,6 +18,7 @@ problem_params = Dict(
 true_model = RegressionModel(problem_params[:true_ϕ],
                              problem_params[:true_w], 
                              problem_params[:true_β])
+
 D = generate_samples(model=true_model, n_samples=problem_params[:n_samples],
                      sample_range=problem_params[:sample_range])
 scale = sum(extrema(D.t))
@@ -43,7 +44,6 @@ end
 alg = ThermoIntegration(nSamples = nSamples, nSteps=nSteps)
 samplepower_posterior(x->loglikelihood(x) + logprior(x), n_dim, alg.nSamples)
 therm_logZ = alg(logprior, loglikelihood, n_dim)
-push!(tlZ, therm_logZ)
 
 ###############################################################################
 ## SVGD integration
@@ -91,5 +91,27 @@ est_logZ_stein_discrep = SVGD.estimate_logZ(H₀, EV,
 true_logZ = regression_logZ(problem_params[:Σ_prior], problem_params[:true_β], 
                             problem_params[:true_ϕ], D.x)
 
-@info "Value comparison" true_logZ tlZ
+@info "Value comparison" true_logZ 
 @info "Value comparison" true_logZ therm_logZ est_logZ_rkhs est_logZ_stein_discrep est_logZ_unbiased
+
+H₀ = Distributions.entropy(initial_dist)
+EV = ( num_expectation( 
+                    initial_dist, 
+                    w -> log_likelihood(D, 
+                            RegressionModel(problem_params[:ϕ], w, 
+                                            problem_params[:true_β])) 
+               )
+               + SVGD.expectation_V(initial_dist, initial_dist) 
+               + 0.5 * log( det(2π * problem_params[:Σ_prior]) )
+              )
+est_logZ = SVGD.estimate_logZ(H₀, EV,
+                            alg_params[:step_size] * sum( get(hist,:dKL_rkhs)[2] ) 
+                                 )
+
+norm_plot = plot(hist[:phi_norm], title="φ norm", yaxis=:log);
+int_plot = plot(
+    SVGD.estimate_logZ.([H₀], [EV], alg_params[:step_size] * cumsum( get(hist, :dKL_rkhs)[2]))
+    ,title="log Z", label="",
+    );
+fit_plot = plot_results(plot(), q, problem_params);
+plot(fit_plot, norm_plot, int_plot, layout=@layout [f; n i])
