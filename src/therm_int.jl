@@ -59,24 +59,24 @@ function (alg::ThermoIntegration)(loglikelihood, logprior, n_dim; kwargs...)
     return trapz(alg.schedule, logZs) # Compute the integral using trapezoids
 end
 
-# model for polynomial regression
-ϕ(x) = [x, x^2, x^4, x^5]
-β = 2
-true_w = [2, -1, 0.2, 1]
-sample_range = [-3,3]
+# # model for polynomial regression
+# ϕ(x) = [x, x^2, x^4, x^5]
+# β = 2
+# true_w = [2, -1, 0.2, 1]
+# sample_range = [-3,3]
 
-n_dim = 4
-n_samples = 50
-x = ϕ.( rand(Uniform(sample_range...), n_samples) )
-target = dot.([true_w], x) .+ sqrt(β) \ randn(n_samples)
-prior = TuringDiagMvNormal(zeros(n_dim), ones(n_dim))
-logprior(θ) = logpdf(prior, θ)
-loglikelihood(θ) = length(x)/2 * log(β/2π) - β/2 * sum( (target .- dot.([θ], x)).^2 )
-# loglikelihood(θ) = sum(logpdf.(Normal.(y, 0.1), x * θ))
-θ_init = rand(n_dim)
-logprior(θ_init)
-loglikelihood(θ_init)
+# n_dim = 4
+# n_samples = 50
+# x = ϕ.( rand(Uniform(sample_range...), n_samples) )
+# target = dot.([true_w], x) .+ sqrt(β) \ randn(n_samples)
+# prior = TuringDiagMvNormal(zeros(n_dim), ones(n_dim))
+# logprior(θ) = logpdf(prior, θ)
+# loglikelihood(θ) = length(x)/2 * log(β/2π) - β/2 * sum( (target .- dot.([θ], x)).^2 )
+# # loglikelihood(θ) = sum(logpdf.(Normal.(y, 0.1), x * θ))
+# θ_init = rand(n_dim)
+# logprior(θ_init)
+# loglikelihood(θ_init)
 
-alg = ThermoIntegration(nSamples = 3000)
-samplepower_posterior(x->loglikelihood(x) + logprior(x), n_dim, alg.nSamples)
-val = alg(logprior, loglikelihood, n_dim)
+# alg = ThermoIntegration(nSamples = 3000)
+# samplepower_posterior(x->loglikelihood(x) + logprior(x), n_dim, alg.nSamples)
+# val = alg(logprior, loglikelihood, n_dim)
