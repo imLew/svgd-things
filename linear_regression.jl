@@ -5,8 +5,8 @@ using Distributions
 using DataFrames
 using LinearAlgebra
 
-# using SVGD
-include(joinpath(@__DIR__, "src", "SVGD.jl"))
+using SVGD
+# include(joinpath(@__DIR__, "src", "SVGD.jl"))
 
 global DIRNAME = "linear_regression"
 
