@@ -77,21 +77,17 @@ function grad_log_likelihood(D::RegressionData, model::RegressionModel)
     model.β * sum( ( D.t .- y(model).(D.x) ) .* model.ϕ.(D.x) )
 end
 
-function fit_linear_regression(problem_params, alg_params)
-    function logp(w)
-        model = RegressionModel(problem_params[:ϕ], w, problem_params[:true_β])
-        log_likelihood(D, model) + logpdf(MvNormal(problem_params[:μ_prior], problem_params[:Σ_prior]), w)
-    end
+function fit_linear_regression(problem_params, alg_params, D::RegressionData)
     function grad_logp(w) 
         model = RegressionModel(problem_params[:ϕ], w, problem_params[:true_β])
         (grad_log_likelihood(D, model) 
             .- inv(problem_params[:Σ_prior]) * (w-problem_params[:μ_prior])
         )
     end
-    grad_logp!(g, w) = g .= grad_logp(w)
-    # we use the prior as the initial distribution of the particles
+
+    # use eithe prior as initial distribution of change initial mean to MAP
     global μ_prior = if problem_params[:MAP_start]
-        posterior_mean(problem_params[:ϕ], problem_params[:true_β], D, 
+        posterior_mean(problem_params[:ϕ], problem_params[:true_β], D.x, 
                        problem_params[:μ_prior], problem_params[:Σ_prior])
     else
         problem_params[:μ_prior]
