@@ -48,7 +48,7 @@ push!(tlZ, therm_logZ)
 
 alg_params = Dict(
     :step_size => 0.0001,
-    :n_iter => 1,
+    :n_iter => 2000,
     :n_particles => 50,
     :kernel_width => "median_trick",
 )
