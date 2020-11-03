@@ -1,3 +1,13 @@
+### Run SVGD integration of KL divergence on the problem of smapling from
+### a Gaussian starting from a standard gaussian
+########
+### command line arguments:
+### make-dicts - create the parameter dicts with DrWatson
+### run "file" - run the algorithm on the parameters given in "file"
+### run-all - run the script on every file specified in "_research/tmp"
+### make-and-run-all - do `make-dicts` followed by `run-all`
+#### Before executing `run-all` of `make-and-run-all` on the cluster the number
+#### of tasks on line 17 ("#$ -t 1-N#Experiments) must be changed
 #!/usr/bin/env julia
 #$ -binding linear:16 # request cpus 
 #$ -N gauss_to_gauss
@@ -70,7 +80,7 @@ function run_g2g(;problem_params, alg_params, n_runs)
 end
 
 ALG_PARAMS = Dict(
-    :n_iter => [2000, 5000],
+    :n_iter => [200, 50],
     :step_size => [0.05, 0.1],
     :n_particles => [100, 200],
     :norm_method => "RKHS_norm",
