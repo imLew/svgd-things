@@ -58,13 +58,12 @@ function svgd_fit(q, grad_logp ;n_iter=100, step_size=1,
         end
         # ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
         # εϕ = Flux.Optimise.apply!(opt, q, ϕ)
-        # # ϕ = calculate_phi(kernel, q, grad_logp)
         # q .+= εϕ
 
         ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
         # phi = calculate_phi(kernel, q, grad_logp)
         if step_size isa Number
-            while step_size * maximum(norm(ϕ)) > 1e-1
+            while step_size * maximum(norm(ϕ)) > 1e-3
                 step_size /= 10
             end
             q .+= step_size*ϕ
@@ -168,17 +167,20 @@ function unbiased_stein_discrep(q, kernel, grad_logp)
     n = size(q)[end]
     h = 1/kernel.transform.s[1]^2
     d = size(q)[1]
+    k_mat = KernelFunctions.kernelmatrix(kernel, q)
     dKL = 0
-    for (i, x ) in enumerate(eachcol(q))
-        for (j, y ) in enumerate(eachcol(q))
+    for (i, x) in enumerate(eachcol(q))
+        glp_x = grad_logp(x)
+        for (j, y) in enumerate(eachcol(q))
             if i != j
-                dKL += kernel(x,y) * grad_logp(x)' * grad_logp(y)
-                dKL += gradient(x->kernel(x,y), x)[1]'*grad_logp(y)
-                dKL += gradient(y->kernel(x,y), y)[1]'*grad_logp(x)
-                dKL += kernel(x,y) * ( 2d/h - 4/h^2 * SqEuclidean()(x,y))
+                dKL += k_mat[i,j] * dot(glp_x, grad_logp(y))
+                dKL += dot( gradient(x->kernel(x,y), x)[1], grad_logp(y) )
+                dKL += dot( gradient(y->kernel(x,y), y)[1], glp_x )
+                # dKL += kernel(x,y) * ( 2d/h - 4/h^2 * SqEuclidean()(x,y))
             end
         end
     end
+    dKL += sum(k_mat .* ( 2*d/h .- 4/h^2 * pairwise(SqEuclidean(), q)))
     dKL /= n*(n-1)
 end
 export unbiased_stein_discrep
@@ -192,9 +194,9 @@ function stein_discrep_biased(q, kernel, grad_logp)
     for (i, x) in enumerate(eachcol(q))
         glp_x = grad_logp(x)
         for (j, y) in enumerate(eachcol(q))
-            dKL += k_mat[i,j] * glp_x' * grad_logp(y)
-            dKL += gradient(x->kernel(x,y), x)[1]'*grad_logp(y)
-            dKL += gradient(y->kernel(x,y), y)[1]'*glp_x
+            dKL += k_mat[i,j] * dot(glp_x, grad_logp(y))
+            dKL += dot( gradient(x->kernel(x,y), x)[1], grad_logp(y) )
+            dKL += dot( gradient(y->kernel(x,y), y)[1], glp_x )
             # dKL += k_mat[i,j] * ( 2*d/h - 4/h^2 * SqEuclidean()(x,y))
         end
     end
