@@ -16,7 +16,6 @@
 #$ -V 
 #$ -t 1-16
 using DrWatson
-using LinearAlgebra
 quickactivate(ENV["JULIA_ENVIRONMENT"], "SVGD")
 
 global DIRNAME = "gaussian_to_gaussian"
@@ -87,6 +86,7 @@ ALG_PARAMS = Dict(
     :kernel_width => "median_trick"
 )
 
+using LinearAlgebra
 function random_cov(n_dim) 
     A = randn((n_dim, n_dim))
     A * A' + I(n_dim)
