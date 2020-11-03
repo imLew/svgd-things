@@ -17,6 +17,10 @@ using PDMats
 # export unbiased_stein_discrep
 # export stein_discrep_biased
 
+function KL_integral(hist, key=:dKL_rkhs)
+    cumsum(get(hist, :step_sizes)[2] .* get(hist, key)[2])
+end
+export KL_integral
 
 function median_trick(x)
     if size(x)[end] == 1
