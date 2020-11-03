@@ -36,7 +36,7 @@ grad(f,x,y) = gradient(f,x,y)[1]
 function svgd_fit(q, grad_logp ;n_iter=100, step_size=1,
                            norm_method="standard", kernel_width=nothing,
                            n_particles=50)
-    opt = Descent(step_size)
+    # opt = Descent(step_size)
     hist = MVHistory()
     if kernel_width isa Number
         kernel = TransformedKernel( 
@@ -62,35 +62,34 @@ function svgd_fit(q, grad_logp ;n_iter=100, step_size=1,
         end
         # ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
         # εϕ = Flux.Optimise.apply!(opt, q, ϕ)
-        # # ϕ = calculate_phi(kernel, q, grad_logp)
         # q .+= εϕ
-        phi = calculate_phi_vectorized(kernel, q, grad_logp)
+
+        ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
         # phi = calculate_phi(kernel, q, grad_logp)
-        q .+= step_size*phi
+        if step_size isa Number
+            while step_size * maximum(norm(ϕ)) > 1e-3
+                step_size /= 10
+            end
+            q .+= step_size*ϕ
+        elseif length(step_size) == n_iter
+            q .+= step_size[i]*ϕ
+        else
+            @error """Step size is neither a number nor an array (of the
+                      correct length""" step_size
+        end
+
         dKL_rkhs = compute_phi_norm(q, kernel, grad_logp, 
-                                     norm_method="RKHS_norm", ϕ=phi)
+                                     norm_method="RKHS_norm", ϕ=ϕ)
         dKL_unbiased = compute_phi_norm(q, kernel, grad_logp, 
-                                     norm_method="unbiased", ϕ=phi)
+                                     norm_method="unbiased", ϕ=ϕ)
         dKL_stein_discrep = compute_phi_norm(q, kernel, grad_logp, 
-                                     norm_method="standard", ϕ=phi)
+                                     norm_method="standard", ϕ=ϕ)
         push!(hist, :dKL_unbiased, i, dKL_unbiased)
         push!(hist, :dKL_stein_discrep, i, dKL_stein_discrep)
         push!(hist, :dKL_rkhs, i, dKL_rkhs)
-        push!(hist, :phi_norm, i, mean(norm(phi)))
-        # ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
-        # # ϕ = calculate_phi(kernel, q, grad_logp)
-        # q .+= step_size*ϕ
-        # dKL_rkhs = compute_phi_norm(q, kernel, grad_logp, 
-        #                              norm_method="RKHS_norm", ϕ=ϕ)
-        # dKL_unbiased = compute_phi_norm(q, kernel, grad_logp, 
-        #                              norm_method="unbiased", ϕ=ϕ)
-        # dKL_stein_discrep = compute_phi_norm(q, kernel, grad_logp, 
-        #                              norm_method="standard", ϕ=ϕ)
-        # push!(hist, :dKL_unbiased, i, dKL_unbiased)
-        # push!(hist, :dKL_stein_discrep, i, dKL_stein_discrep)
-        # push!(hist, :dKL_rkhs, i, dKL_rkhs)
-        # push!(hist, :ϕ_norm, i, mean(norm(ϕ)))
-        # @debug "ϕ L² norm = $(mean(norm(ϕ)))"
+        push!(hist, :ϕ_norm, i, mean(norm(ϕ)))
+        push!(hist, :covariance, i, cov(q, dims=2))
+        push!(hist, :step_sizes, i, step_size)
     end
     return q, hist
 end
