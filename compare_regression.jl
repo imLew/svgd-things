@@ -11,7 +11,7 @@ problem_params = Dict(
     :true_β => 2,
     :ϕ => x -> [1, x, x^2],
     :μ_prior => zeros(n_dim),
-    :Σ_prior => 0.5I(n_dim),
+    :Σ_prior => 0.05I(n_dim),
     :MAP_start => true,
 )
 
@@ -50,7 +50,7 @@ therm_logZ = alg(logprior, loglikelihood, n_dim)
 alg_params = Dict(
     :step_size => 0.0001,
     :n_iter => 3000,
-    :n_particles => 10,
+    :n_particles => 20,
     :kernel_width => "median_trick",
 )
 initial_dist, q, hist = fit_linear_regression(problem_params, alg_params, D)
@@ -102,9 +102,12 @@ true_logZ = regression_logZ(problem_params[:Σ_prior], problem_params[:true_β],
 est_logZ = SVGD.estimate_logZ(H₀, EV, KL_integral(hist)[end])
 
 norm_plot = plot(hist[:ϕ_norm], title="φ norm", yaxis=:log);
+step_plot = plot(hist[:step_sizes], title="step sizes", yaxis=:log);
+cov_norm = norm.(get(hist, :covariance)[2])
+cov_plot = plot(cov_norm, title="covariance norm", yaxis=:log);
 int_plot = plot(SVGD.estimate_logZ.([H₀], [EV], KL_integral(hist)),
                 title="log Z", label="",);
 fit_plot = plot_results(plot(), q, problem_params);
-plot(fit_plot, norm_plot, int_plot, layout=@layout [f; n i])
+plot(fit_plot, norm_plot, int_plot, step_plot, cov_plot, layout=@layout [f; n i; s c])
 
 @info "Value comparison" true_logZ therm_logZ est_logZ_rkhs est_logZ_stein_discrep est_logZ_unbiased
