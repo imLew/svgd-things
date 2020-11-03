@@ -4,8 +4,9 @@
 #$ -q all.q 
 #$ -cwd 
 #$ -V 
-#$ -t 1-96
+#$ -t 1-16
 using DrWatson
+using LinearAlgebra
 quickactivate(ENV["JULIA_ENVIRONMENT"], "SVGD")
 
 global DIRNAME = "gaussian_to_gaussian"
@@ -44,15 +45,10 @@ function run_g2g(;problem_params, alg_params, n_runs)
         H₀ = Distributions.entropy(initial_dist)
         EV = expectation_V( initial_dist, target_dist)
 
-        est_logZ_rkhs = estimate_logZ(H₀, EV,
-                        alg_params[:step_size] * sum( get(hist,:dKL_rkhs)[2] ) 
-                                 )
-        est_logZ_unbiased = estimate_logZ(H₀, EV,
-                    alg_params[:step_size] * sum( get(hist,:dKL_unbiased)[2] ) 
-                                 )
-        est_logZ_stein_discrep = estimate_logZ(H₀, EV,
-                alg_params[:step_size] * sum( get(hist,:dKL_stein_discrep)[2] ) 
-                                 )
+        est_logZ_rkhs = estimate_logZ(H₀, EV, KL_integral(hist)[end])
+        est_logZ_unbiased = estimate_logZ(H₀, EV, KL_integral(hist, :dKL_unbiased)[end])
+        est_logZ_stein_discrep = estimate_logZ(H₀, EV, KL_integral(hist, :dKL_stein_discrep)[end])
+
         global true_logZ = logZ(target_dist)
 
         push!(svgd_results, (hist, q))
@@ -75,10 +71,22 @@ end
 
 ALG_PARAMS = Dict(
     :n_iter => [2000, 5000],
-    :step_size => [0.05, 0.01, 0.005],
-    :n_particles => [ 50, 100, 200, 500],
+    :step_size => [0.05, 0.1],
+    :n_particles => [100, 200],
     :norm_method => "RKHS_norm",
     :kernel_width => "median_trick"
+)
+
+function random_cov(n_dim) 
+    A = randn((n_dim, n_dim))
+    A * A' + I(n_dim)
+end
+n_dim = 10
+PROBLEM_PARAMS_ND = Dict(
+    :μ₀ => [zeros(n_dim)],
+    :μₚ => [zeros(n_dim),2*rand(n_dim)],
+    :Σ₀ => [I(n_dim)],
+    :Σₚ => [random_cov(n_dim)],
 )
 
 PROBLEM_PARAMS_2D = Dict(
@@ -88,8 +96,10 @@ PROBLEM_PARAMS_2D = Dict(
     :Σₚ => [[1. 0.5; 0.5 1],[2 0.1; 0.1 2]],
 )
 
-# TODO add params for a high dimensional gaussian
-PROBLEM_PARAMS = PROBLEM_PARAMS_2D
+# PROBLEM_PARAMS = PROBLEM_PARAMS_2D
+PROBLEM_PARAMS = PROBLEM_PARAMS_ND
+
+# @info "Numer of experiments" (dict_list_count(PROBLEM_PARAMS) * dict_list_count(ALG_PARAMS))
 
 if length(ARGS) == 0 && haskey(ENV, "SGE_TASK_ID")
 # for running in a job array on the gridengine cluster;
@@ -137,7 +147,6 @@ elseif ARGS[1] == "run"
                   n_runs=dict_o_dicts[:N_RUNS])
 elseif ARGS[1] == "run-all"
     Threads.@threads for file in readdir("_research/tmp", join=true)
-        # run(`echo start`); run(`sleep 5`); run(`echo done`)
         run(`julia $PROGRAM_FILE run $file`)
     end
 elseif ARGS[1] == "make-and-run-all"
