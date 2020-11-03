@@ -64,10 +64,6 @@ function true_gauss_expectation(d::MvNormal, m::RegressionModel, D::RegressionDa
         + length(D) * log(m.β / 2π))
 end
 
-function KL_integral(hist, key=:dKL_rkhs)
-    cumsum(get(hist, :step_sizes)[2] .* get(hist, key)[2])
-end
-
 H₀ = Distributions.entropy(initial_dist)
 EV = ( true_gauss_expectation(initial_dist,  
             RegressionModel(problem_params[:ϕ], mean(initial_dist), 
