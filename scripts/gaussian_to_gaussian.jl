@@ -1,3 +1,10 @@
+#!/usr/bin/env julia
+#$ -binding linear:16 # request cpus 
+#$ -N gauss_to_gauss
+#$ -q all.q 
+#$ -cwd 
+#$ -V 
+#$ -t 1-16
 ### Run SVGD integration of KL divergence on the problem of smapling from
 ### a Gaussian starting from a standard gaussian
 ########
@@ -8,13 +15,6 @@
 ### make-and-run-all - do `make-dicts` followed by `run-all`
 #### Before executing `run-all` of `make-and-run-all` on the cluster the number
 #### of tasks on line 17 ("#$ -t 1-N#Experiments) must be changed
-#!/usr/bin/env julia
-#$ -binding linear:16 # request cpus 
-#$ -N gauss_to_gauss
-#$ -q all.q 
-#$ -cwd 
-#$ -V 
-#$ -t 1-16
 using DrWatson
 quickactivate(ENV["JULIA_ENVIRONMENT"], "SVGD")
 
