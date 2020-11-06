@@ -24,8 +24,8 @@ function expectation_V(initial_dist::Distribution, target_dist::Distribution)
 end
 
 function expectation_V(initial_dist::Normal, target_dist::Normal)
-    μ₀, σ₀ = params(initial_dist)
-    μₚ, σₚ = params(target_dist)
+    μ₀, σ₀ = Distributions.params(initial_dist)
+    μₚ, σₚ = Distributions.params(target_dist)
     0.5 * ( σ₀^2 / σₚ^2 + (μ₀-μₚ)^2/σₚ^2  )
 end
 
@@ -49,11 +49,11 @@ function logZ(d::Distribution)
 end
 
 function logZ(d::T) where T <: Union{Normal, MvNormal}
-    - logpdf( d, params(d)[1] )
+    - logpdf( d, Distributions.params(d)[1] )
 end
 
 function logZ(d::Exponential)
-    λ = 1/params(d)[1] 
+    λ = 1/Distributions.params(d)[1] 
     1/λ
 end
 
@@ -63,16 +63,16 @@ end
 
 function pdf_potential(d::Exponential, x)
     # Distribution.jl uses inverse param θ=1/λ (i.e. 1/θ e^{-x/θ})
-    λ = 1/params(d)[1] 
+    λ = 1/Distributions.params(d)[1] 
     λ * x
 end
 
 function pdf_potential(d::Normal, x)
-    μ, σ = params(d)
+    μ, σ = Distributions.params(d)
     2 \ ((x-μ)/σ)^2
 end
 
 function pdf_potential(d::MvNormal, x)
-    μ, Σ = params(d)
+    μ, Σ = Distributions.params(d)
     2 \ invquad(Σ, x-μ)
 end
