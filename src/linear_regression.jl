@@ -6,8 +6,8 @@ using DataFrames
 using LinearAlgebra
 using Optim
 
-# using SVGD
-include(joinpath(@__DIR__, "src", "SVGD.jl"))
+using SVGD
+# include(joinpath(@__DIR__, "src", "SVGD.jl"))
 
 global DIRNAME = "linear_regression"
 
@@ -44,6 +44,7 @@ y(model::RegressionModel, x) = y(model)(x)
 # util functions for analytical solution
 # returns an array (indexed by x) of arrays containing ϕ(x)
 Φ(ϕ, X) = vcat( ϕ.(X)'... )
+Φ(m::RegressionModel, X) = Φ(m.ϕ, X) 
 # accuracy = inverse of variance
 function posterior_accuracy(ϕ, β, X, Σ₀)
     inv(Σ₀) + β * Φ(ϕ, X)'Φ(ϕ, X)
