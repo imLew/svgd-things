@@ -67,10 +67,12 @@ function svgd_fit(q, grad_logp ;n_iter=100, step_size=1,
         ϕ = calculate_phi_vectorized(kernel, q, grad_logp)
         # phi = calculate_phi(kernel, q, grad_logp)
         if step_size isa Number
-            while step_size * maximum(norm(ϕ)) > 1e-3
-                step_size /= 10
+            ϵ = step_size
+            while ϵ * maximum(norm(ϕ)) > 1e-4
+                ϵ /= 2
             end
-            q .+= step_size*ϕ
+            push!(hist, :step_sizes, i, ϵ)
+            q .+= ϵ*ϕ
         elseif length(step_size) == n_iter
             q .+= step_size[i]*ϕ
         else
@@ -88,8 +90,8 @@ function svgd_fit(q, grad_logp ;n_iter=100, step_size=1,
         push!(hist, :dKL_stein_discrep, i, dKL_stein_discrep)
         push!(hist, :dKL_rkhs, i, dKL_rkhs)
         push!(hist, :ϕ_norm, i, mean(norm(ϕ)))
-        push!(hist, :covariance, i, cov(q, dims=2))
-        push!(hist, :step_sizes, i, step_size)
+        push!(hist, :Σ, i, cov(q, dims=2))
+        push!(hist, :step_sizes, i, step_size[i])
     end
     return q, hist
 end
