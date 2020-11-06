@@ -22,7 +22,7 @@ global DIRNAME = "gaussian_to_gaussian"
 global N_RUNS = 1
 
 ### local util functions
-function gaussian_to_gaussian(;μ₀::Vector, μₚ::Vector, Σ₀::Matrix, Σₚ::Matrix,
+function gaussian_to_gaussian(;μ₀::Vector, μₚ::Vector, Σ₀, Σₚ,
                               alg_params)
     initial_dist = MvNormal(μ₀, Σ₀)
     target_dist = MvNormal(μₚ, Σₚ)
@@ -77,6 +77,14 @@ function run_g2g(;problem_params, alg_params, n_runs)
             safe=true, storepatch=true
     )
 end
+
+alg_params = Dict(
+    :n_iter => 200,
+    :step_size => 0.05, 
+    :n_particles => 200,
+    :norm_method => "RKHS_norm",
+    :kernel_width => "median_trick"
+)
 
 ALG_PARAMS = Dict(
     :n_iter => [200, 50],
