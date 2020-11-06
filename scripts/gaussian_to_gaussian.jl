@@ -87,9 +87,9 @@ alg_params = Dict(
 )
 
 ALG_PARAMS = Dict(
-    :n_iter => [200, 50],
+    :n_iter => [2000, 1000],
     :step_size => [0.05, 0.1],
-    :n_particles => [100, 200],
+    :n_particles => [100, 50],
     :norm_method => "RKHS_norm",
     :kernel_width => "median_trick"
 )
