@@ -75,6 +75,7 @@ function svgd_fit(q, grad_logp ;n_iter=100, step_size=1,
             q .+= ϵ*ϕ
         elseif length(step_size) == n_iter
             q .+= step_size[i]*ϕ
+            push!(hist, :step_sizes, i, step_size[i])
         else
             @error """Step size is neither a number nor an array (of the
                       correct length""" step_size
@@ -91,7 +92,6 @@ function svgd_fit(q, grad_logp ;n_iter=100, step_size=1,
         push!(hist, :dKL_rkhs, i, dKL_rkhs)
         push!(hist, :ϕ_norm, i, mean(norm(ϕ)))
         push!(hist, :Σ, i, cov(q, dims=2))
-        push!(hist, :step_sizes, i, step_size[i])
     end
     return q, hist
 end
