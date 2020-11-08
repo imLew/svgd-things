@@ -57,7 +57,9 @@ end
 
 function run_log_regression(;problem_params, alg_params, n_runs)
     svgd_results = []
-    estimation_results = []
+    estimation_rkhs = []
+    estimation_unbiased = []
+    estimation_stein_discrep = []
 
     # dataset with labels
     D = generate_2class_samples_from_gaussian(n₀=problem_params[:n₀],
@@ -79,19 +81,25 @@ function run_log_regression(;problem_params, alg_params, n_runs)
                + expectation_V(initial_dist, initial_dist) 
                + 0.5 * log( det(2π * problem_params[:Σ_initial]) )
               )
-        est_logZ = estimate_logZ(H₀, EV,
-                            alg_params[:step_size] * sum( get(hist,:dKL)[2] ) 
-                                 )
 
-        push!(svgd_results, hist)
-        push!(estimation_results, est_logZ)
+        est_logZ_rkhs = estimate_logZ(H₀, EV, KL_integral(hist)[end])
+        est_logZ_unbiased = estimate_logZ(H₀, EV, KL_integral(hist, :dKL_unbiased)[end])
+        est_logZ_stein_discrep = estimate_logZ(H₀, EV, KL_integral(hist, :dKL_stein_discrep)[end])
+
+
+        push!(svgd_results, (hist, q))
+        push!(estimation_rkhs, est_logZ_rkhs) 
+        push!(estimation_unbiased, est_logZ_unbiased)
+        push!(estimation_stein_discrep,est_logZ_stein_discrep)
     end
 
     file_prefix = savename( merge(problem_params, alg_params, @dict n_runs) )
 
     tagsave(datadir(DIRNAME, file_prefix * ".bson"),
             merge(alg_params, problem_params, 
-                @dict n_runs estimation_results svgd_results),
+                @dict n_runs, estimation_unbiased, 
+                        estimation_stein_discrep,
+                        estimation_rkhs, svgd_results),
             safe=true, storepatch = false)
 end
 
@@ -118,17 +126,17 @@ PROBLEM_PARAMS = Dict(
 
 N_RUNS = 1
 
-n_alg = dict_list_count(ALG_PARAMS)
-n_prob = dict_list_count(PROBLEM_PARAMS)
-@info "$(n_alg*n_prob) total experiments"
-for (i, pp) ∈ enumerate(dict_list(PROBLEM_PARAMS)), 
-        (j, ap) ∈ enumerate(dict_list(ALG_PARAMS))
-    @info "Experiment $( (i-1)*n_alg + j) of $(n_alg*n_prob)"
-    @info "Sampling problem: $pp"
-    @info "Alg parameters: $ap"
-    @time run_log_regression(
-            problem_params=pp,
-            alg_params=ap,
-            n_runs=N_RUNS
-            )
-end
+# n_alg = dict_list_count(ALG_PARAMS)
+# n_prob = dict_list_count(PROBLEM_PARAMS)
+# @info "$(n_alg*n_prob) total experiments"
+# for (i, pp) ∈ enumerate(dict_list(PROBLEM_PARAMS)), 
+#         (j, ap) ∈ enumerate(dict_list(ALG_PARAMS))
+#     @info "Experiment $( (i-1)*n_alg + j) of $(n_alg*n_prob)"
+#     @info "Sampling problem: $pp"
+#     @info "Alg parameters: $ap"
+#     @time run_log_regression(
+#             problem_params=pp,
+#             alg_params=ap,
+#             n_runs=N_RUNS
+#             )
+# end
