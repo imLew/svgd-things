@@ -59,6 +59,15 @@ function regression_logZ(Σ₀, β, ϕ, X)
     2 \ log( det( 2π * posterior_variance(ϕ, β, X, Σ₀) ) ) 
 end
 
+function true_gauss_expectation(d::MvNormal, m::RegressionModel, D::RegressionData)
+    X = reduce(hcat, m.ϕ.(D.x))
+    @show size(X)
+    0.5 * m.β * (tr((mean(d) * mean(d)' + cov(d)) * X * X')
+        - 2 * D.t' * X' * mean(d)
+        + D.t' * D.t
+        + length(D) * log(m.β / 2π))
+end
+
 function generate_samples(;model::RegressionModel, n_samples=100, 
                           sample_range=[-10, 10])
     samples =  rand(Uniform(sample_range...), n_samples) 
@@ -81,14 +90,14 @@ function grad_log_likelihood(D::RegressionData, model::RegressionModel)
 end
 
 function fit_linear_regression(problem_params, alg_params, D::RegressionData)
-  function logp(w)
+    function logp(w)
         model = RegressionModel(problem_params[:ϕ], w, problem_params[:true_β])
         log_likelihood(D, model) + logpdf(MvNormal(problem_params[:μ_prior], problem_params[:Σ_prior]), w)
     end  
     function grad_logp(w) 
         model = RegressionModel(problem_params[:ϕ], w, problem_params[:true_β])
         (grad_log_likelihood(D, model) 
-            .- inv(problem_params[:Σ_prior]) * (w-problem_params[:μ_prior])
+         .- inv(problem_params[:Σ_prior]) * (w-problem_params[:μ_prior])
         )
     end
     grad_logp!(g, w) = g .= grad_logp(w)
@@ -203,7 +212,6 @@ end
 #     :kernel_width => "median_trick",
 # )
 
-
 # problem_params = Dict(
 #     :n_samples => 20,
 #     :sample_range => [-3, 3],
@@ -219,7 +227,6 @@ end
 # n_runs = 1
 
 # run_linear_regression(problem_params, alg_params, n_runs)
-
 
 # # run it once to get a value for log Z
 # true_model = RegressionModel(problem_params[:true_ϕ], problem_params[:true_w], 
