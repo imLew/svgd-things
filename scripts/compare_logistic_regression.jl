@@ -52,7 +52,7 @@ H₀ = Distributions.entropy(initial_dist)
 EV = ( numerical_expectation( initial_dist, 
     w -> logistic_log_likelihood(D,w) )
     + expectation_V(initial_dist, initial_dist) 
-    + 0.5 * log( det(2π * problem_params[:Σ_initial]) )
+    + 0.5 * logdet(2π * problem_params[:Σ_initial])
 ) 
 est_logZ_rkhs = SVGD.estimate_logZ(H₀, EV, KL_integral(hist)[end])
 est_logZ_unbiased = SVGD.estimate_logZ(H₀, EV, KL_integral(hist, :dKL_unbiased)[end])
@@ -61,14 +61,18 @@ est_logZ_stein_discrep = SVGD.estimate_logZ(H₀, EV, KL_integral(hist, :dKL_ste
 ###############################################################################
 ## compare results
 using Plots
-using SVGD
 
-norm_plot = plot(hist[:ϕ_norm], title="φ norm", yaxis=:log);
-step_plot = plot(hist[:step_sizes], title="step sizes", yaxis=:log);
+norm_plot = plot(hist[:ϕ_norm], title="||φ||", yaxis=:log);
+step_plot = plot(hist[:step_sizes], title="ϵ", yaxis=:log);
 cov_diff = norm.(get(hist, :Σ)[2][2:end] - get(hist, :Σ)[2][1:end-1])
 cov_plot = plot(cov_diff, title="||ΔΣ||", yaxis=:log);
-int_plot = plot(SVGD.estimate_logZ.([H₀], [EV], KL_integral(hist)),
-                title="log Z", label="",);
+int_plot = plot(title="log Z");
+plot!(int_plot, SVGD.estimate_logZ.([H₀], [EV], KL_integral(hist)),
+                label="rkhs",);
+plot!(int_plot, SVGD.estimate_logZ.([H₀], [EV], KL_integral(hist, :dKL_stein_discrep)),
+                label="discrep",);
+plot!(int_plot, SVGD.estimate_logZ.([H₀], [EV], KL_integral(hist, :dKL_unbiased)),
+                label="unbiased",);
 # fit_plot = plot_results(plot(), q, problem_params);
 plot(norm_plot, int_plot, step_plot, cov_plot, layout=@layout [n i; s c])
 
