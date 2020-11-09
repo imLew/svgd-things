@@ -68,7 +68,7 @@ function svgd_fit(q, grad_logp ;n_iter=100, step_size=1,
         # phi = calculate_phi(kernel, q, grad_logp)
         if step_size isa Number
             ϵ = step_size
-            while ϵ * maximum(norm(ϕ)) > 1e-4
+            while ϵ * maximum(norm(ϕ)) > 1
                 ϵ /= 2
             end
             push!(hist, :step_sizes, i, ϵ)

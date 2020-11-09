@@ -6,7 +6,6 @@ export expectation_V
 export estimate_logZ
 export logZ
 export svgd_sample_from_known_distribution
-export plot_known_dists
 export numerical_expectation
 
 function svgd_sample_from_known_distribution(initial_dist, target_dist;
