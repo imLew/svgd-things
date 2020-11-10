@@ -29,7 +29,7 @@ RegressionData = Data.RegressionData
 
 Base.getindex(d::RegressionData, i::Int) = RegressionData(d.x[i], d.t[i])
 Base.display(d::RegressionData) = display([d.x d.t])
-Base.length(d::RegressionData) = length(d.x)
+Base.length(d::RegressionData) = length(d.t)
 Base.iterate(d::RegressionData) = (d[1], 1)
 function Base.iterate(d::RegressionData, state)
     if state < length(d)
