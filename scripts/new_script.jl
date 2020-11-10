@@ -69,7 +69,7 @@ function update_k!(k, X)
 end
 
 function optim_step(W, ϕ)
-    εs = 10^(-9:0.1:0)
+    εs = 10.0.^(-9:0.1:0)
     tot_logp = zero(εs)
     for (i, ε) in enumerate(εs)
         tot_logp[i] = sum(V, eachcol(W .+ ε * ϕ))
@@ -137,7 +137,7 @@ anim = Animation()
     α = 1.0#renorm(ϕ, thresh)
     # Δϕ = Optimise.apply!(opt, W, slow_start(i) * ϕ) # Rescale ϕ
     Δϕ = ε * α * ϕ
-    dKL[i] = compute_dKL(k, W, Δϕ) # Compute dKL/dt
+    dKL[i] = compute_dKL(k, W, ϕ) # Compute dKL/dt
     W .+= Δϕ # Update ϕ with additional rescaling
     if any(isnan.(W))
         error("Values went to NaN")
@@ -160,13 +160,14 @@ if do_plot gif(anim) end
 emp_logZ = entrop - expec_0 + sum(dKL)
 @info emp_logZ
 p1 = bar(["Truth", "Stein Integration"], [true_Z, emp_logZ],lab="")
-p2 = plot(1:length(dKL), entrop - expec_0 .+ cumsum(dKL), lab="Stein integration")
+p2 = plot(1:length(dKL), entrop - expec_0 .+ cumsum(ϵs .* dKL), lab="Stein integration")
 hline!([true_Z], lab = "truth")
-p3 = plot(1:length(εs), εs, label = "ε")
-plot(p1, p2, p3, layout = (1, 3), lw = 3.0) |> display
+p3 = plot(1:length(εs), εs, label = "ε", yaxis = :log)
+pf = plot(p1, p2, p3, layout = (1, 3), lw = 3.0)
+display(pf)
 
 ## Plot result
 
 p_data = plot_data(vec(mean(W, dims = 2)))
 p_W = plot_W(W)
-plot(p_data, p_W)
+plot(p_data, p_W, pf)
