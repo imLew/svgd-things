@@ -61,7 +61,6 @@ end
 
 function true_gauss_expectation(d::MvNormal, m::RegressionModel, D::RegressionData)
     X = reduce(hcat, m.ϕ.(D.x))
-    @show size(X)
     0.5 * m.β * (tr((mean(d) * mean(d)' + cov(d)) * X * X')
         - 2 * D.t' * X' * mean(d)
         + D.t' * D.t

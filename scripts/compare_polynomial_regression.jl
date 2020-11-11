@@ -48,27 +48,27 @@ therm_logZ = alg(logprior, loglikelihood, n_dim)
 ## SVGD integration
 
 alg_params = Dict(
-    :step_size => 0.1,
-    :n_iter => 5000,
-    :n_particles => 20,
+    :step_size => 0.001,
+    :n_iter => 500,
+    :n_particles => 100,
     :kernel_width => "median_trick",
 )
 initial_dist, q, hist = fit_linear_regression(problem_params, alg_params, D)
 
 H₀ = Distributions.entropy(initial_dist)
-EV = ( true_gauss_expectation(initial_dist,  
+EV = ( 
+true_gauss_expectation(initial_dist,  
             RegressionModel(problem_params[:ϕ], mean(initial_dist), 
                             problem_params[:true_β]), D)
-        # num_expectation( 
-            # initial_dist, 
-            # w -> log_likelihood(D, RegressionModel(problem_params[:ϕ], w, 
-                                                #    problem_params[:true_β])) )
+        # num_expectation( initial_dist, 
+        #         w -> log_likelihood(D, RegressionModel(problem_params[:ϕ], w, 
+        #                                            problem_params[:true_β])) )
        + SVGD.expectation_V(initial_dist, initial_dist) 
        + 0.5 * logdet(2π * problem_params[:Σ_prior])
       )
 est_logZ_rkhs = SVGD.estimate_logZ(H₀, EV, KL_integral(hist)[end])
-est_logZ_unbiased = SVGD.estimate_logZ(H₀, EV, KL_integral(hist, :dKL_unbiased)[end])
-est_logZ_stein_discrep = SVGD.estimate_logZ(H₀, EV, KL_integral(hist, :dKL_stein_discrep)[end])
+# est_logZ_unbiased = SVGD.estimate_logZ(H₀, EV, KL_integral(hist, :dKL_unbiased)[end])
+# est_logZ_stein_discrep = SVGD.estimate_logZ(H₀, EV, KL_integral(hist, :dKL_stein_discrep)[end])
 
 ###############################################################################
 ## compare results
@@ -83,11 +83,12 @@ cov_plot = plot(cov_diff, title="covariance norm", yaxis=:log);
 int_plot = plot(title="log Z");
 plot!(int_plot, SVGD.estimate_logZ.([H₀], [EV], KL_integral(hist)),
                 label="rkhs",);
-plot!(int_plot, SVGD.estimate_logZ.([H₀], [EV], KL_integral(hist, :dKL_stein_discrep)),
-                label="discrep",);
-plot!(int_plot, SVGD.estimate_logZ.([H₀], [EV], KL_integral(hist, :dKL_unbiased)),
-                label="unbiased",);
+# plot!(int_plot, SVGD.estimate_logZ.([H₀], [EV], KL_integral(hist, :dKL_stein_discrep)),
+#                 label="discrep",);
+# plot!(int_plot, SVGD.estimate_logZ.([H₀], [EV], KL_integral(hist, :dKL_unbiased)),
+#                 label="unbiased",);
 fit_plot = plot_results(plot(), q, problem_params);
 plot(fit_plot, norm_plot, int_plot, step_plot, cov_plot, layout=@layout [f; n i; s c])
 
-@info "Value comparison" true_logZ est_logZ_rkhs est_logZ_stein_discrep est_logZ_unbiased
+@info "Value comparison" true_logZ therm_logZ est_logZ_rkhs 
+# @info "Value comparison" true_logZ therm_logZ est_logZ_rkhs est_logZ_stein_discrep est_logZ_unbiased
