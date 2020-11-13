@@ -31,8 +31,13 @@ end
 
 gradlogp(w) = ForwardDiff.gradient(logp, w)
 
-gradkernel(k, x, y) = ForwardDiff.gradient(x->k(x, y), x)
-
+function gradkernel(k, x, y) 
+    if x == y
+        return zero(x)
+    else
+        return ForwardDiff.gradient(x->k(x, y), x)
+    end
+end
 function plot_data(w)
     scatter(x, y, lab= "data")
     plot!(x, x->dot([1, x], w), lab ="y=x*w")
@@ -72,9 +77,9 @@ function optim_step(W, ϕ)
     εs = 10.0.^(-9:0.1:0)
     tot_logp = zero(εs)
     for (i, ε) in enumerate(εs)
-        tot_logp[i] = sum(V, eachcol(W .+ ε * ϕ))
+        tot_logp[i] = sum(logp, eachcol(W .+ ε * ϕ))
     end
-    return εs[argmin(tot_logp)]
+    return εs[argmax(tot_logp)]
 end
 
 function comp_ϕ!(ϕ, X, k, n_particles)
@@ -107,7 +112,7 @@ freq = 1
 n_iter = 1_000
 n_particles = 20
 n_samples = 100_000
-k = 1.0 * transform(SqExponentialKernel(), 1.0)
+k = 1.0 * transform(Matern32Kernel(), 1.0)
 m_init = mean(prior)
 # m_init = mean(true_p)
 C_init = cov(prior)
@@ -149,8 +154,8 @@ anim = Animation()
     εs[i] = ε * α
     if do_plot
         if i % freq == 0
-            p_data = plot_data(vec(mean(W, dims = 2)))
-            p_W = plot_W(W)
+            local p_data = plot_data(vec(mean(W, dims = 2)))
+            local p_W = plot_W(W)
             plot(p_data, p_W, title = "Iteration $i")
             frame(anim)
         end
@@ -160,7 +165,7 @@ if do_plot gif(anim) end
 emp_logZ = entrop - expec_0 + sum(dKL)
 @info emp_logZ
 p1 = bar(["Truth", "Stein Integration"], [true_Z, emp_logZ],lab="")
-p2 = plot(1:length(dKL), entrop - expec_0 .+ cumsum(ϵs .* dKL), lab="Stein integration")
+p2 = plot(1:length(dKL), entrop - expec_0 .+ cumsum(εs .* dKL), lab="Stein integration")
 hline!([true_Z], lab = "truth")
 p3 = plot(1:length(εs), εs, label = "ε", yaxis = :log)
 pf = plot(p1, p2, p3, layout = (1, 3), lw = 3.0)
@@ -170,4 +175,4 @@ display(pf)
 
 p_data = plot_data(vec(mean(W, dims = 2)))
 p_W = plot_W(W)
-plot(p_data, p_W, pf)
+plot(p_data, p_W)
