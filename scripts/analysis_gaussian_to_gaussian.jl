@@ -2,6 +2,8 @@ using BSON
 using Distributions
 using ValueHistories
 using Plots
+using ColorSchemes
+colors = ColorSchemes.seaborn_colorblind
 
 using SVGD
 
@@ -94,7 +96,7 @@ function plot_gaussian_results(data)
 end
 
 function plot_2D_gaussian(initial_dist, target_dist, q)
-    dist_plot = scatter(q[1,:], q[2,:], legend=false, label="", msw=0.0, alpha=0.5, color=colors[1]);
+    dist_plot = scatter(q[1,:], q[2,:], legend=false, label="", msw=0.0, alpha=0.5, color=colors[1], xticks=:none, yticks=:none);
     # get range to cover both distributions and the particles
     min_x = minimum([
                     q[1] - 0.5 * abs(minimum(q[1])), 
@@ -172,11 +174,6 @@ all_data = [BSON.load(n) for n in readdir("data/gaussian_to_gaussian", join=true
 # for some reason the last file has multiple values for the estimates
 pop!(all_data) 
 
-data_set = all_data
-
-using ColorSchemes
-colors = ColorSchemes.seaborn_colorblind
-
 root_dest = "/home/lew/Documents/BCCN_Master/Stein_labrot/SteinIntegration_AABI/plots/"
 
 # for Figure 1
@@ -222,25 +219,19 @@ end
 
 # Figure 2
 # compare different targets for fixed step size, particles and iterations
-function plot_all(data; size=(275,275), legend=:bottomright, ylims=(-Inf,Inf), lw=3)
+function plot_all(data; size=(175,175), legend=:bottomright, ylims=(-Inf,Inf), lw=3)
     dKL_hist = data[:svgd_results][1][1]
     final_particles = data[:svgd_results][1][end]
-
     initial_dist = MvNormal(data[:μ₀], data[:Σ₀])
     target_dist = MvNormal(data[:μₚ], data[:Σₚ])
-
     H₀ = Distributions.entropy(initial_dist)
     EV = expectation_V( initial_dist, target_dist )
     true_logZ = logZ(target_dist)
-
-    int_plot = plot(xlabel="iterations", ylabel="log Z", legend=legend, size=size, lw=lw, 
-        ylims=(1, 3));
+    int_plot = plot(xlabel="iterations", ylabel="log Z", legend=legend, lw=lw, ylims=(1, 3));
     est_logZ = estimate_logZ.([H₀], [EV], data[:step_size]*cumsum(get(dKL_hist, :dKL_rkhs)[2]))
     plot!(int_plot, est_logZ, label="", color=colors[1]);
     hline!(int_plot, [true_logZ], labels="", color=colors[2], ls=:dash);
-
     dist_plot = plot_2D_gaussian(initial_dist, target_dist, final_particles);
-
     if data[:n_iter] == 5000
         xticks=0:2500:5000
     elseif data[:n_iter] == 10000
@@ -252,20 +243,18 @@ function plot_all(data; size=(275,275), legend=:bottomright, ylims=(-Inf,Inf), l
                      markeralpha=0, label="", title="", xticks=xticks, color=colors[1],
                     xlabel="iterations", ylabel="||φ||");
     layout = @layout [ i ; n b]
-    final_plot = plot(int_plot, norm_plot, dist_plot, layout=layout, legend=:bottomright, size=(275,275));
+    final_plot = plot(int_plot, norm_plot, dist_plot, layout=layout, legend=:bottomright, size=size);
 end
-
 dest = root_dest*"by_target/"
 data_set = filter_by_dict(Dict(
                                :μ₀ => [[0.0, 0.0]],
                                :Σ₀ => [[1.0 0.0; 0.0 1.0]],
                                :n_particles => [500],
                                :n_iter => [5000],
-                               :step_size => [0.05]
-                              ))
+                               :step_size => [0.05]))
 for data in data_set
     savefig(
-            plot_all(data, legend=:none),
+            plot_all(data, legend=:none, size=(250,250)),
             dest*data_filename(data)*".png"
            )
     sleep(0.1)
