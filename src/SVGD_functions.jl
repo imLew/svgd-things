@@ -182,11 +182,11 @@ function unbiased_stein_discrep(q, kernel, grad_logp)
                 dKL += k_mat[i,j] * dot(glp_x, grad_logp(y))
                 dKL += dot( gradient(x->kernel(x,y), x)[1], grad_logp(y) )
                 dKL += dot( gradient(y->kernel(x,y), y)[1], glp_x )
-                # dKL += kernel(x,y) * ( 2d/h - 4/h^2 * SqEuclidean()(x,y))
+                dKL += kernel(x,y) * ( 2d/h - 4/h^2 * SqEuclidean()(x,y))
             end
         end
     end
-    dKL += sum(k_mat .* ( 2*d/h .- 4/h^2 * pairwise(SqEuclidean(), q)))
+    # dKL += sum(k_mat .* ( 2*d/h .- 4/h^2 * pairwise(SqEuclidean(), q)))
     dKL /= n*(n-1)
 end
 export unbiased_stein_discrep
@@ -203,10 +203,9 @@ function stein_discrep_biased(q, kernel, grad_logp)
             dKL += k_mat[i,j] * dot(glp_x, grad_logp(y))
             dKL += dot( gradient(x->kernel(x,y), x)[1], grad_logp(y) )
             dKL += dot( gradient(y->kernel(x,y), y)[1], glp_x )
-            # dKL += k_mat[i,j] * ( 2*d/h - 4/h^2 * SqEuclidean()(x,y))
+            dKL += k_mat[i,j] * ( 2*d/h - 4/h^2 * SqEuclidean()(x,y))
         end
     end
-    dKL += sum(k_mat .* ( 2*d/h .- 4/h^2 * pairwise(SqEuclidean(), q)))
     dKL /= n^2
 end
 export stein_discrep_biased
