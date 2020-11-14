@@ -96,7 +96,7 @@ function plot_gaussian_results(data)
 end
 
 function plot_2D_gaussian(initial_dist, target_dist, q)
-    dist_plot = scatter(q[1,:], q[2,:], legend=false, label="", msw=0.0, alpha=0.5, color=colors[1], xticks=:none, yticks=:none);
+    dist_plot = scatter(q[1,:], q[2,:], legend=false, label="", msw=0.0, alpha=0.5, color=colors[1]);
     # get range to cover both distributions and the particles
     min_x = minimum([
                     q[1] - 0.5 * abs(minimum(q[1])), 
