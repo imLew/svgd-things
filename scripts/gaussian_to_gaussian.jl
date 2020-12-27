@@ -18,7 +18,7 @@
 using DrWatson
 quickactivate(ENV["JULIA_ENVIRONMENT"], "SVGD")
 
-global DIRNAME = "gaussian_to_gaussian"
+global DIRNAME = "gaussian_to_gaussian_step_sizes"
 
 ### local util functions
 function gaussian_to_gaussian(;μ₀::Vector, μₚ::Vector, Σ₀, Σₚ, alg_params)
