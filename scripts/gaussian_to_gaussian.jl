@@ -19,11 +19,9 @@ using DrWatson
 quickactivate(ENV["JULIA_ENVIRONMENT"], "SVGD")
 
 global DIRNAME = "gaussian_to_gaussian"
-global N_RUNS = 1
 
 ### local util functions
-function gaussian_to_gaussian(;μ₀::Vector, μₚ::Vector, Σ₀, Σₚ,
-                              alg_params)
+function gaussian_to_gaussian(;μ₀::Vector, μₚ::Vector, Σ₀, Σₚ, alg_params)
     initial_dist = MvNormal(μ₀, Σ₀)
     target_dist = MvNormal(μₚ, Σₚ)
     q, hist = svgd_sample_from_known_distribution( initial_dist, target_dist; 
@@ -78,46 +76,21 @@ function run_g2g(;problem_params, alg_params, n_runs)
     )
 end
 
-alg_params = Dict(
-    :n_iter => 200,
-    :step_size => 0.05, 
-    :n_particles => 200,
-    :norm_method => "RKHS_norm",
-    :kernel_width => "median_trick"
-)
+global N_RUNS = 10
 
-ALG_PARAMS = Dict(
-    :n_iter => [2000, 1000],
-    :step_size => [0.05, 0.1],
-    :n_particles => [100, 50],
-    :norm_method => "RKHS_norm",
-    :kernel_width => "median_trick"
-)
-
-using LinearAlgebra
-function random_cov(n_dim) 
-    A = randn((n_dim, n_dim))
-    A * A' + I(n_dim)
-end
-n_dim = 10
-PROBLEM_PARAMS_ND = Dict(
-    :μ₀ => [zeros(n_dim)],
-    :μₚ => [zeros(n_dim),2*rand(n_dim)],
-    :Σ₀ => [I(n_dim)],
-    :Σₚ => [random_cov(n_dim)],
-)
-
-PROBLEM_PARAMS_2D = Dict(
+PROBLEM_PARAMS = Dict(
     :μ₀ => [[0., 0]],
-    :μₚ => [[0,0.],[4,5]],
+    :μₚ => [[4,5]],
     :Σ₀ => [[1. 0; 0 1.]],
-    :Σₚ => [[1. 0.5; 0.5 1],[2 0.1; 0.1 2]],
+    :Σₚ => [[1. 0.5; 0.5 1]],
+)
+ALG_PARAMS = Dict(
+    :n_iter => [5000],
+    :step_size => [0.05, 0.01, 0.005],
+    :n_particles => [200],
 )
 
-# PROBLEM_PARAMS = PROBLEM_PARAMS_2D
-PROBLEM_PARAMS = PROBLEM_PARAMS_ND
-
-# @info "Numer of experiments" (dict_list_count(PROBLEM_PARAMS) * dict_list_count(ALG_PARAMS))
+# @info "Number of experiments" (dict_list_count(PROBLEM_PARAMS) * dict_list_count(ALG_PARAMS))
 
 if length(ARGS) == 0 && haskey(ENV, "SGE_TASK_ID")
 # for running in a job array on the gridengine cluster;
@@ -139,6 +112,7 @@ if length(ARGS) == 0 && haskey(ENV, "SGE_TASK_ID")
                   alg_params=dict_o_dicts[:alg_params],
                   n_runs=dict_o_dicts[:N_RUNS])
 elseif ARGS[1] == "make-dicts" 
+
 # make dictionaries in a tmp directory containing the parameters for
 # all the experiment we want to run
 # also saves a dictionary mapping numbers 1 through #dicts to the dictionary
