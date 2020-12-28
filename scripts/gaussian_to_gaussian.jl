@@ -18,7 +18,7 @@
 using DrWatson
 quickactivate(ENV["JULIA_ENVIRONMENT"], "SVGD")
 
-global DIRNAME = "gaussian_to_gaussian_step_sizes"
+global DIRNAME = "gaussian_to_gaussian_num_particles"
 
 ### local util functions
 function gaussian_to_gaussian(;μ₀::Vector, μₚ::Vector, Σ₀, Σₚ, alg_params)
@@ -84,10 +84,11 @@ PROBLEM_PARAMS = Dict(
     :Σ₀ => [[1. 0; 0 1.]],
     :Σₚ => [[1. 0.5; 0.5 1]],
 )
+
 ALG_PARAMS = Dict(
-    :n_iter => [5000],
-    :step_size => [0.05, 0.01, 0.005],
-    :n_particles => [200],
+    :n_iter => [10000],
+    :step_size => [0.05],
+    :n_particles => [50, 100, 200, 500, 1000],
 )
 
 # @info "Number of experiments" (dict_list_count(PROBLEM_PARAMS) * dict_list_count(ALG_PARAMS))
